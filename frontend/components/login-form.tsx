@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import Link from "next/link";
+
 import {
   Field,
   FieldDescription,
@@ -50,9 +52,13 @@ export function LoginForm({
               <Field>
                 <Button type="submit">Login</Button>
               </Field>
-                <FieldDescription className="text-center">
-                  Don&apos;t have an account? <a href="#">Sign up</a>
-                </FieldDescription>
+              <FieldDescription className="text-center">
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="text-blue-500 hover:underline">
+                  Sign up
+                </Link>
+              </FieldDescription>
+
             </FieldGroup>
           </form>
           <div className="bg-muted relative hidden md:block">
