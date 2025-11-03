@@ -16,6 +16,7 @@ import (
 type apiConfig struct {
 	dbQueries *database.Queries
 	JWTSecret string
+	adminCode string
 }
 
 func main() {
@@ -31,6 +32,7 @@ func main() {
 	apiConfig := apiConfig{
 		dbQueries: database.New(db),
 		JWTSecret: os.Getenv("JWTSecret"),
+		adminCode: os.Getenv("ADMINCODE"),
 	}
 
 	serverMux := http.NewServeMux()
@@ -42,6 +44,7 @@ func main() {
 
 	serverMux.HandleFunc("GET /api/health", readiness)
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
+	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 
 	server.ListenAndServe()
 
