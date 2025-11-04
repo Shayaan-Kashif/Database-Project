@@ -46,6 +46,8 @@ func main() {
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
 	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 
+	fmt.Println("server is running...")
+
 	server.ListenAndServe()
 
 }

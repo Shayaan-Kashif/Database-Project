@@ -9,16 +9,23 @@ import (
 
 func (cfg *apiConfig) signUp(res http.ResponseWriter, req *http.Request) {
 	reqStruct := struct {
-		Email     string `json:"email"`
-		Password  string `json:"password"`
-		Name      string `json:"name"`
-		AdminCode string `json:"adminCode"`
+		Email     *string `json:"email"`
+		Password  *string `json:"password"`
+		Name      *string `json:"name"`
+		AdminCode  string `json:"adminCode"`
 	}{}
 
 	if err := decodeJSON(req, &reqStruct); err != nil {
 		respondWithError(res, http.StatusBadRequest, err.Error())
 		return
 	}
+
+	if reqStruct.Name == nil || reqStruct.Password == nil || reqStruct.Email == nil {
+		respondWithError(res, http.StatusBadRequest, "invalid json structure")
+		return
+	}
+
+
 
 	role := "user"
 
@@ -29,7 +36,7 @@ func (cfg *apiConfig) signUp(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	hashed_password, err := auth.Hashpassword(reqStruct.Password)
+	hashed_password, err := auth.Hashpassword(*reqStruct.Password)
 
 	if err != nil {
 		respondWithError(res, http.StatusInternalServerError, err.Error())
@@ -37,8 +44,8 @@ func (cfg *apiConfig) signUp(res http.ResponseWriter, req *http.Request) {
 	}
 
 	userDBEntry, err := cfg.dbQueries.CreateUser(req.Context(), database.CreateUserParams{
-		Name: reqStruct.Name,
-		Email: reqStruct.Email,
+		Name: *reqStruct.Name,
+		Email: *reqStruct.Email,
 		HashedPassword: hashed_password,
 		Role: role,
 	})
