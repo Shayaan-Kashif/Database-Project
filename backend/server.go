@@ -46,6 +46,7 @@ func main() {
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
 	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 	serverMux.HandleFunc("POST /api/login", apiConfig.login)
+	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
 	
 
 	fmt.Println("server is running on http://localhost:8080")

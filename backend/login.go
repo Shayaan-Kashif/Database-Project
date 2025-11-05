@@ -162,12 +162,59 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 
 	responseStruct := struct {
 		AccessToken string `json:"access_token"`
-		Name  string `json:"name"`
+		Name        string `json:"name"`
 	}{
 		AccessToken: JWT,
-		Name:  userDB.Name,
+		Name:        userDB.Name,
 	}
 
 	respondWithJSON(res, http.StatusOK, responseStruct)
+
+}
+
+func (cfg *apiConfig) refresh(res http.ResponseWriter, req *http.Request) {
+	refreshToken, err := auth.GetRefreshTokenFromCookie(req)
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	dbToken, err := cfg.dbQueries.GetRefreshToken(req.Context(), refreshToken)
+
+	if err == sql.ErrNoRows {
+		respondWithError(res, http.StatusUnauthorized, "Unauthorized")
+		return
+	} else if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if dbToken.RevokedAt.Valid {
+		respondWithError(res, http.StatusUnauthorized, "refresh token revoked/expired")
+		return
+	}
+
+	if time.Now().After(dbToken.ExpiresAt) {
+		if !dbToken.RevokedAt.Valid {
+			if err := cfg.dbQueries.RevokeToken(req.Context(), refreshToken); err != nil {
+				respondWithError(res, http.StatusInternalServerError, err.Error())
+				return
+			}
+		}
+
+		respondWithError(res, http.StatusUnauthorized, "refresh token expired")
+		return
+	}
+
+	JWT, err := auth.MakeJWT(dbToken.UserID, dbToken.Role, cfg.JWTSecret, 15*time.Minute)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(res, http.StatusOK, struct {
+		AccessToken string `json:"access_token"`
+	}{AccessToken: JWT})
 
 }
