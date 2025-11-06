@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/Shayaan-Kashif/Database-Project/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -35,6 +36,47 @@ func (cfg *apiConfig) getParkingLots(res http.ResponseWriter, req *http.Request)
 		})
 	}
 
-	respondWithJSON(res, http.StatusCreated, response)
+	respondWithJSON(res, http.StatusOK, response)
 
+}
+
+func (cfg *apiConfig) createParkingLot(res http.ResponseWriter, req *http.Request) {
+	reqStruct := struct {
+		Name  *string `json:"name"`
+		Slots *int32  `json:"slots"`
+	}{}
+
+	if err := decodeJSON(req, &reqStruct); err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if reqStruct.Name == nil || reqStruct.Slots == nil {
+		respondWithError(res, http.StatusBadRequest, "Invalid JSON structure")
+		return
+	}
+
+	parkingLotDBEntry, err := cfg.dbQueries.CreateParkingLot(req.Context(), database.CreateParkingLotParams{
+		Name:  *reqStruct.Name,
+		Slots: *reqStruct.Slots,
+	})
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseStruct := struct {
+		ID            uuid.UUID `json:"id"`
+		Name          string    `json:"name"`
+		Slots         int32     `json:"slots"`
+		Occupiedslots int32     `json:"occupiedSlots"`
+	}{
+		ID:            parkingLotDBEntry.ID,
+		Name:          parkingLotDBEntry.Name,
+		Slots:         parkingLotDBEntry.Slots,
+		Occupiedslots: parkingLotDBEntry.Occupiedslots,
+	}
+
+	respondWithJSON(res, http.StatusCreated, responseStruct)
 }

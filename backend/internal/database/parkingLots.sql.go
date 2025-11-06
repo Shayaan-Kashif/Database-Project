@@ -9,6 +9,34 @@ import (
 	"context"
 )
 
+const createParkingLot = `-- name: CreateParkingLot :one
+INSERT INTO parkinglots(id, name, slots, occupiedslots)
+VALUES (
+    gen_random_uuid(),
+    $1,
+    $2,
+    0
+)
+RETURNING id, name, slots, occupiedslots
+`
+
+type CreateParkingLotParams struct {
+	Name  string
+	Slots int32
+}
+
+func (q *Queries) CreateParkingLot(ctx context.Context, arg CreateParkingLotParams) (Parkinglot, error) {
+	row := q.db.QueryRowContext(ctx, createParkingLot, arg.Name, arg.Slots)
+	var i Parkinglot
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slots,
+		&i.Occupiedslots,
+	)
+	return i, err
+}
+
 const getParkingLots = `-- name: GetParkingLots :many
 SELECT id, name, slots, occupiedslots
 FROM parkinglots
