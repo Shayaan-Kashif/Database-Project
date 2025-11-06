@@ -9,6 +9,14 @@ import {
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L, { LatLngExpression } from 'leaflet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -17,7 +25,7 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Example parking lots (polygons)
+// Parking lot interface
 interface ParkingLot {
   id: string;
   coordinates: LatLngExpression[];
@@ -58,7 +66,6 @@ const parkingLots: ParkingLot[] = [
     ],
     color: 'orange',
   },
-
   {
     id: 'Founders 3',
     coordinates: [
@@ -69,7 +76,6 @@ const parkingLots: ParkingLot[] = [
     ],
     color: 'black',
   },
-
   {
     id: 'Founders 1',
     coordinates: [
@@ -82,19 +88,48 @@ const parkingLots: ParkingLot[] = [
     ],
     color: 'purple',
   },
-
 ];
 
 export default function Map() {
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const handleLotClick = (lotId: string) => {
+    setSelectedLot(lotId);
+    setIsSheetOpen(true); // open the Sheet when a lot is selected
+  };
 
   return (
-    <div className="h-screen w-full rounded-lg overflow-hidden">
+    <div className="relative h-screen w-full rounded-lg overflow-hidden">
+      {/* The side Sheet */}
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent side="right" className="w-[400px]">
+          {selectedLot ? (
+            <>
+              <SheetHeader>
+                <SheetTitle>{selectedLot}</SheetTitle>
+                <SheetDescription>
+                  Viewing details for <strong>{selectedLot}</strong>.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-4 space-y-3">
+                <p>Available spots: 12</p>
+                <p>Zone: North Campus</p>
+                <Button className="w-full">Reserve Spot</Button>
+              </div>
+            </>
+          ) : (
+            <p>No lot selected.</p>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* The map */}
       <MapContainer
-        center={[43.945, -78.896]}
+        center={[43.948, -78.897]}
         zoom={16}
         scrollWheelZoom={true}
-        className="h-full w-full"
+        className="h-full w-full z-0"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
@@ -112,19 +147,14 @@ export default function Map() {
               fillOpacity: selectedLot === lot.id ? 0.4 : 0.25,
             }}
             eventHandlers={{
-              click: () => setSelectedLot(lot.id),
+              click: () => handleLotClick(lot.id),
             }}
           >
             {selectedLot === lot.id && (
               <Popup>
                 <div className="text-sm">
                   <p><strong>{lot.id}</strong></p>
-                  <button
-                    className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-xs"
-                    onClick={() => alert(`Reserved in ${lot.id}`)}
-                  >
-                    Reserve Spot
-                  </button>
+                  <p>Tap Reserve Spot in the side panel to continue.</p>
                 </div>
               </Popup>
             )}
