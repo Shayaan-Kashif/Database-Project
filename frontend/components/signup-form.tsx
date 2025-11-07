@@ -19,6 +19,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export function SignupForm({
   className,
@@ -29,6 +36,8 @@ export function SignupForm({
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [role, setRole] = useState<"student" | "admin">("student")
+  const [adminCode, setAdminCode] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,6 +57,12 @@ export function SignupForm({
       return
     }
 
+    // Validate admin code if admin role is selected
+    if (role === "admin" && !adminCode.trim()) {
+      setError("Admin code is required for admin accounts")
+      return
+    }
+
     setSubmitting(true)
     try {
       const res = await fetch("http://localhost:8080/api/users", {
@@ -57,7 +72,7 @@ export function SignupForm({
           name,
           email, 
           password,
-          adminCode: "" // Optional field, empty string for regular users
+          adminCode: role === "admin" ? adminCode : "" // Send admin code only if admin role is selected
         }),
         credentials: "include",
       })
@@ -113,6 +128,39 @@ export function SignupForm({
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </Field>
+              <Field>
+                <FieldLabel htmlFor="role">Role</FieldLabel>
+                <Select value={role} onValueChange={(value: "student" | "admin") => {
+                  setRole(value)
+                  if (value === "student") {
+                    setAdminCode("") // Clear admin code when switching to student
+                  }
+                }}>
+                  <SelectTrigger id="role" className="w-full">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {role === "admin" && (
+                <Field>
+                  <FieldLabel htmlFor="adminCode">Admin Code</FieldLabel>
+                  <Input
+                    id="adminCode"
+                    type="text"
+                    placeholder="Enter admin code"
+                    required
+                    value={adminCode}
+                    onChange={(e) => setAdminCode(e.target.value)}
+                  />
+                  <FieldDescription>
+                    Enter the admin code to create an admin account.
+                  </FieldDescription>
+                </Field>
+              )}
               <Field>
                 <Field className="grid grid-cols-2 gap-4">
                   <Field>
