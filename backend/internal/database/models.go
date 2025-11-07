@@ -38,7 +38,7 @@ type Review struct {
 	ParkingLotID uuid.UUID
 	Title        string
 	Description  sql.NullString
-	Score        sql.NullInt32
+	Score        int32
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
