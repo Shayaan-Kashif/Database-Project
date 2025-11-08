@@ -54,7 +54,7 @@ export function LoginForm({
 
       // Navigate to map (or redirect to intended destination)
       const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-      router.push(redirectParam || "/map")
+      router.push(redirectParam || "/dashboard")
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unexpected error"
       setError(msg)
