@@ -5,14 +5,58 @@
 package database
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type ParkingLog struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	ParkingLotID uuid.UUID
+	EventType    string
+	Time         time.Time
+}
+
+type Parkinglot struct {
+	ID            uuid.UUID
+	Name          string
+	Slots         int32
+	Occupiedslots int32
+}
+
+type RefreshToken struct {
+	Token     string
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+	RevokedAt sql.NullTime
+}
+
+type Review struct {
+	UserID       uuid.UUID
+	ParkingLotID uuid.UUID
+	Title        string
+	Description  sql.NullString
+	Score        int32
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
 
 type Test struct {
 	ID        uuid.UUID
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type User struct {
+	ID             uuid.UUID
+	Name           string
+	Email          string
+	HashedPassword string
+	Role           string
+	ParkingLotID   uuid.NullUUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }

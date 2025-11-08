@@ -16,6 +16,7 @@ import (
 type apiConfig struct {
 	dbQueries *database.Queries
 	JWTSecret string
+	adminCode string
 }
 
 func main() {
@@ -31,17 +32,25 @@ func main() {
 	apiConfig := apiConfig{
 		dbQueries: database.New(db),
 		JWTSecret: os.Getenv("JWTSecret"),
+		adminCode: os.Getenv("ADMINCODE"),
 	}
 
 	serverMux := http.NewServeMux()
 
 	server := http.Server{
 		Addr:    ":8080",
-		Handler: serverMux,
+		Handler: withCORS(serverMux),
 	}
 
 	serverMux.HandleFunc("GET /api/health", readiness)
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
+	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
+	serverMux.HandleFunc("POST /api/login", apiConfig.login)
+	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
+	serverMux.HandleFunc("GET /api/parkingLots", apiConfig.getParkingLots)
+	serverMux.HandleFunc("POST /api/parkingLots", apiConfig.createParkingLot)
+
+	fmt.Println("server is running on http://localhost:8080")
 
 	server.ListenAndServe()
 
@@ -109,4 +118,20 @@ func (cfg *apiConfig) testDB(res http.ResponseWriter, req *http.Request) {
 
 	respondWithJSON(res, 200, response)
 
+}
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		res.Header().Set("Access-Control-Allow-Credentials", "true")
+		res.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		res.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if req.Method == http.MethodOptions {
+			res.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(res, req)
+	})
 }

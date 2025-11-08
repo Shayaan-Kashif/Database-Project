@@ -3,6 +3,8 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"net/http"
 )
 
 func MakeRefreshToken() (string, error) {
@@ -16,3 +18,16 @@ func MakeRefreshToken() (string, error) {
 
 	return hex.EncodeToString(key), nil
 }
+
+func GetRefreshTokenFromCookie(req *http.Request) (string, error){
+	cookie, err := req.Cookie("refresh_token")
+
+	if err == http.ErrNoCookie {
+		return "", fmt.Errorf("no refresh token found")
+	} else if err != nil {
+		return "", fmt.Errorf("error reading cookie: %w", err)
+	}
+
+	return cookie.Value, nil
+}
+
