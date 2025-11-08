@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   MapContainer,
   TileLayer,
@@ -17,6 +18,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { IconArrowLeft } from "@tabler/icons-react";
 
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -91,6 +93,7 @@ const parkingLots: ParkingLot[] = [
 ];
 
 export default function Map() {
+  const router = useRouter();
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -101,6 +104,17 @@ export default function Map() {
 
   return (
     <div className="relative h-screen w-full rounded-lg overflow-hidden">
+      {/* Back to Dashboard Button - positioned below zoom controls */}
+      <div className="absolute top-[85px] left-4 z-[1000]">
+        <Button
+          onClick={() => router.push('/dashboard')}
+          variant="outline"
+          className="bg-background/90 backdrop-blur-sm shadow-md hover:bg-background"
+        >
+          <IconArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Button>
+      </div>
       {/* The side Sheet */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent side="right" className="w-[400px]">
