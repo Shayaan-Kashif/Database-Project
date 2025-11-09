@@ -58,7 +58,7 @@ func main() {
 	serverMux.HandleFunc("POST /api/login", apiConfig.login)
 	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
 	serverMux.HandleFunc("GET /api/parkingLots", apiConfig.getParkingLots)
-	serverMux.HandleFunc("POST /api/parkingLots", apiConfig.createParkingLot)
+	serverMux.Handle("POST /api/parkingLots", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.createParkingLot)))
 	serverMux.Handle("POST /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.CreateReview)))
 	serverMux.Handle("PATCH /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
 
