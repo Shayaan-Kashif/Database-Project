@@ -9,3 +9,17 @@ VALUES(
     NOW(),
     NOW()
 ) RETURNING *;
+
+
+-- name: UpdateReview :exec
+UPDATE reviews
+SET 
+title = $1,
+description = $2,
+score = $3,
+updated_at = NOW()
+WHERE user_id = $4 AND parking_lot_id = $5;
+
+-- name: GetReviewByID :one
+SELECT * FROM reviews
+WHERE user_id = $1 AND parking_lot_id = $2;

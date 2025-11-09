@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 
-	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
 	"github.com/google/uuid"
 )
@@ -45,7 +44,6 @@ func (cfg *apiConfig) createParkingLot(res http.ResponseWriter, req *http.Reques
 	reqStruct := struct {
 		Name  *string `json:"name"`
 		Slots *int32  `json:"slots"`
-		JWT   string  `json:"jwt"`
 	}{}
 
 	if err := decodeJSON(req, &reqStruct); err != nil {
@@ -58,12 +56,7 @@ func (cfg *apiConfig) createParkingLot(res http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	_, role, err := auth.ValidateJWT(reqStruct.JWT, cfg.JWTSecret)
-
-	if err != nil {
-		respondWithError(res, http.StatusInternalServerError, err.Error())
-		return
-	}
+	role := req.Context().Value(ctxRole).(string)
 
 	if role != "admin" {
 		respondWithError(res, http.StatusUnauthorized, "Unauthorized")
