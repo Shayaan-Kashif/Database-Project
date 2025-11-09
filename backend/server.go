@@ -60,7 +60,7 @@ func main() {
 	serverMux.HandleFunc("GET /api/parkingLots", apiConfig.getParkingLots)
 	serverMux.Handle("POST /api/parkingLots", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.createParkingLot)))
 	serverMux.Handle("POST /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.CreateReview)))
-	serverMux.Handle("PATCH /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
+	serverMux.Handle("PATCH /api/reviews/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
 	serverMux.HandleFunc("GET /api/reviews/{lotID}", apiConfig.getReviewsFromLotID)
 
 	fmt.Println("server is running on http://localhost:8080")

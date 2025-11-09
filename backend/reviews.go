@@ -67,8 +67,12 @@ func (cfg *apiConfig) CreateReview(res http.ResponseWriter, req *http.Request) {
 func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 	userID := req.Context().Value(ctxUserID).(uuid.UUID)
 
+	parkingLotID, err := uuid.Parse(req.PathValue("lotID"))
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+	}
+
 	reqStruct := struct {
-		ParkingLotID *uuid.UUID `json:"parkingLotID"`
 		Title        *string    `json:"title"`
 		Description  *string     `json:"description"`
 		Score        *int        `json:"score"`
@@ -79,14 +83,14 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if reqStruct.ParkingLotID == nil || (reqStruct.Title == nil && reqStruct.Description == nil && reqStruct.Score == nil) {
+	if  (reqStruct.Title == nil && reqStruct.Description == nil && reqStruct.Score == nil) {
 		respondWithError(res, http.StatusBadRequest, "modification request invalid")
 		return
 	}
 
 	currentToModifiedReview, err := cfg.dbQueries.GetReviewByID(req.Context(), database.GetReviewByIDParams{
 		UserID:       userID,
-		ParkingLotID: *reqStruct.ParkingLotID,
+		ParkingLotID: parkingLotID,
 	})
 	
 
@@ -122,7 +126,7 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 		Description: currentToModifiedReview.Description,
 		Score: currentToModifiedReview.Score,
 		UserID: userID,
-		ParkingLotID: *reqStruct.ParkingLotID,
+		ParkingLotID: parkingLotID,
 	})
 
 	hasPgErr, message := handlePgConstraints(err)
