@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
 	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type apiConfig struct {
@@ -25,7 +26,7 @@ type ctxkey string
 
 const (
 	ctxUserID ctxkey = "userID"
-	ctxRole ctxkey = "role"
+	ctxRole   ctxkey = "role"
 )
 
 func main() {
@@ -59,6 +60,7 @@ func main() {
 	serverMux.HandleFunc("GET /api/parkingLots", apiConfig.getParkingLots)
 	serverMux.HandleFunc("POST /api/parkingLots", apiConfig.createParkingLot)
 	serverMux.Handle("POST /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.CreateReview)))
+	serverMux.Handle("PATCH /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
 
 	fmt.Println("server is running on http://localhost:8080")
 
@@ -168,4 +170,14 @@ func (cfg *apiConfig) authMiddleWare(next http.Handler) http.Handler {
 		next.ServeHTTP(res, req.WithContext(ctx))
 
 	})
+}
+
+func handlePgConstraints(err error) (bool, string) {
+	var pqErr *pq.Error
+	//postgres violation codes: unique, foreign key, check, not null violation in that order
+	if errors.As(err, &pqErr) && (pqErr.Code == "23505" || pqErr.Code == "23503" || pqErr.Code == "23514" || pqErr.Code == "23502") {
+		return true, pqErr.Message
+	}
+
+	return false, ""
 }
