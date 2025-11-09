@@ -60,7 +60,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, string, error) {
 func GetBearerToken(header http.Header) (string, error) {
 	authData := header.Get("Authorization")
 	if authData == "" {
-		return authData, fmt.Errorf("there is no token")
+		return authData, fmt.Errorf("there is no access token")
 	}
 
 	return strings.Fields(authData)[1], nil
