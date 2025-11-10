@@ -11,3 +11,7 @@ FROM top_rated_lot;
 SELECT *
 FROM avg_parking_time_per_user
 WHERE user_id = $1;
+
+-- name: GetCountOfLogsPerUser :many
+SELECT *
+FROM count_of_logs_per_user;

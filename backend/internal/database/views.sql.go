@@ -24,6 +24,34 @@ func (q *Queries) GetAverageParkingTimeFromUserID(ctx context.Context, userID uu
 	return i, err
 }
 
+const getCountOfLogsPerUser = `-- name: GetCountOfLogsPerUser :many
+SELECT userid, username, totalentries
+FROM count_of_logs_per_user
+`
+
+func (q *Queries) GetCountOfLogsPerUser(ctx context.Context) ([]CountOfLogsPerUser, error) {
+	rows, err := q.db.QueryContext(ctx, getCountOfLogsPerUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountOfLogsPerUser
+	for rows.Next() {
+		var i CountOfLogsPerUser
+		if err := rows.Scan(&i.Userid, &i.Username, &i.Totalentries); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getReviewsFromLotID = `-- name: GetReviewsFromLotID :many
 SELECT userid, username, lotid, lotname, title, description, score, created_at, updated_at
 FROM user_reviews_with_lot 

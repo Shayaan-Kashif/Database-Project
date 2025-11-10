@@ -111,3 +111,32 @@ func (cfg *apiConfig) getAvgTimeParkedFromUserID(res http.ResponseWriter, req *h
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) getCountOfLogsPerUser(res http.ResponseWriter, req *http.Request) {
+	countOfLogsDB, err := cfg.dbQueries.GetCountOfLogsPerUser(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID           uuid.UUID `json:"id"`
+		Name         string    `json:"name"`
+		TotalEntries int64     `json:"totalEntries"`
+	}, 0, len(countOfLogsDB))
+
+	for _, u := range countOfLogsDB {
+		response = append(response, struct {
+			ID           uuid.UUID `json:"id"`
+			Name         string    `json:"name"`
+			TotalEntries int64     `json:"totalEntries"`
+		}{
+			ID:           u.Userid.UUID,
+			Name:         u.Username.String,
+			TotalEntries: u.Totalentries,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
