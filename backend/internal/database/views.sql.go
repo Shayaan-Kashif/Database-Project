@@ -11,6 +11,19 @@ import (
 	"github.com/google/uuid"
 )
 
+const getAverageParkingTimeFromUserID = `-- name: GetAverageParkingTimeFromUserID :one
+SELECT user_id, user_name, avg_minutes_parked
+FROM avg_parking_time_per_user
+WHERE user_id = $1
+`
+
+func (q *Queries) GetAverageParkingTimeFromUserID(ctx context.Context, userID uuid.UUID) (AvgParkingTimePerUser, error) {
+	row := q.db.QueryRowContext(ctx, getAverageParkingTimeFromUserID, userID)
+	var i AvgParkingTimePerUser
+	err := row.Scan(&i.UserID, &i.UserName, &i.AvgMinutesParked)
+	return i, err
+}
+
 const getReviewsFromLotID = `-- name: GetReviewsFromLotID :many
 SELECT userid, username, lotid, lotname, title, description, score, created_at, updated_at
 FROM user_reviews_with_lot 
@@ -37,6 +50,34 @@ func (q *Queries) GetReviewsFromLotID(ctx context.Context, lotid uuid.UUID) ([]U
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopRatedLots = `-- name: GetTopRatedLots :many
+SELECT id, name, round
+FROM top_rated_lot
+`
+
+func (q *Queries) GetTopRatedLots(ctx context.Context) ([]TopRatedLot, error) {
+	rows, err := q.db.QueryContext(ctx, getTopRatedLots)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TopRatedLot
+	for rows.Next() {
+		var i TopRatedLot
+		if err := rows.Scan(&i.ID, &i.Name, &i.Round); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

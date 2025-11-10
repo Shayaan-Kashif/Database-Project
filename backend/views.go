@@ -61,3 +61,53 @@ func (cfg *apiConfig) getReviewsFromLotID(res http.ResponseWriter, req *http.Req
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) getTopRatedLots(res http.ResponseWriter, req *http.Request) {
+	topRatedLotsDB, err := cfg.dbQueries.GetTopRatedLots(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID       uuid.UUID `json:"id"`
+		Name     string    `json:"name"`
+		AvgScore string    `json:"avgScore"`
+	}, 0, len(topRatedLotsDB))
+
+	for _, u := range topRatedLotsDB {
+		response = append(response, struct {
+			ID       uuid.UUID `json:"id"`
+			Name     string    `json:"name"`
+			AvgScore string    `json:"avgScore"`
+		}{
+			ID:       u.ID,
+			Name:     u.Name,
+			AvgScore: u.Round,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) getAvgTimeParkedFromUserID(res http.ResponseWriter, req *http.Request) {
+	userID := req.Context().Value(ctxUserID).(uuid.UUID)
+
+	timeParkedDB, err := cfg.dbQueries.GetAverageParkingTimeFromUserID(req.Context(), userID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := struct {
+		Name             string `json:"name"`
+		AvgMinutesParked string `json:"avgMinutesParked"`
+	}{
+		Name:             timeParkedDB.UserName,
+		AvgMinutesParked: timeParkedDB.AvgMinutesParked,
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
