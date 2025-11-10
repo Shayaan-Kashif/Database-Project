@@ -52,6 +52,46 @@ func (q *Queries) GetCountOfLogsPerUser(ctx context.Context) ([]CountOfLogsPerUs
 	return items, nil
 }
 
+const getHighestLowestRatingsFromUserID = `-- name: GetHighestLowestRatingsFromUserID :many
+SELECT userid, username, lotid, lotname, title, description, score, created_at, updated_at, reviewtype
+FROM user_highest_lowest_ratings
+WHERE userid = $1
+`
+
+func (q *Queries) GetHighestLowestRatingsFromUserID(ctx context.Context, userid uuid.UUID) ([]UserHighestLowestRating, error) {
+	rows, err := q.db.QueryContext(ctx, getHighestLowestRatingsFromUserID, userid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserHighestLowestRating
+	for rows.Next() {
+		var i UserHighestLowestRating
+		if err := rows.Scan(
+			&i.Userid,
+			&i.Username,
+			&i.Lotid,
+			&i.Lotname,
+			&i.Title,
+			&i.Description,
+			&i.Score,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Reviewtype,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getReviewsFromLotID = `-- name: GetReviewsFromLotID :many
 SELECT userid, username, lotid, lotname, title, description, score, created_at, updated_at
 FROM user_reviews_with_lot 

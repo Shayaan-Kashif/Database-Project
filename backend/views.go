@@ -25,7 +25,7 @@ func (cfg *apiConfig) getReviewsFromLotID(res http.ResponseWriter, req *http.Req
 
 	response := make([]struct {
 		UserID      uuid.UUID      `json:"userID"`
-		UserName    string         `json:"userName"`
+		UserName    string         `json:"username"`
 		LotID       uuid.UUID      `json:"lotID"`
 		LotName     string         `json:"lotName"`
 		Title       string         `json:"title"`
@@ -38,7 +38,7 @@ func (cfg *apiConfig) getReviewsFromLotID(res http.ResponseWriter, req *http.Req
 	for _, u := range reviewsViewDB {
 		response = append(response, struct {
 			UserID      uuid.UUID      `json:"userID"`
-			UserName    string         `json:"userName"`
+			UserName    string         `json:"username"`
 			LotID       uuid.UUID      `json:"lotID"`
 			LotName     string         `json:"lotName"`
 			Title       string         `json:"title"`
@@ -135,6 +135,58 @@ func (cfg *apiConfig) getCountOfLogsPerUser(res http.ResponseWriter, req *http.R
 			ID:           u.Userid.UUID,
 			Name:         u.Username.String,
 			TotalEntries: u.Totalentries,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) getHighestLowestRatingsFromUserID(res http.ResponseWriter, req *http.Request) {
+	userID := req.Context().Value(ctxUserID).(uuid.UUID)
+
+	highestLowestRatingsDB, err := cfg.dbQueries.GetHighestLowestRatingsFromUserID(req.Context(), userID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		UserID      uuid.UUID      `json:"userID"`
+		UserName    string         `json:"username"`
+		LotID       uuid.UUID      `json:"lotID"`
+		LotName     string         `json:"lotName"`
+		Title       string         `json:"title"`
+		Description sql.NullString `json:"description"`
+		Score       int32          `json:"score"`
+		CreatedAt   time.Time      `json:"createdAt"`
+		UpdatedAt   time.Time      `json:"updatedAt"`
+		ReviewType  string         `json:"reviewType"`
+	}, 0, len(highestLowestRatingsDB))
+
+	for _, u := range highestLowestRatingsDB {
+		response = append(response, struct {
+			UserID      uuid.UUID      `json:"userID"`
+			UserName    string         `json:"username"`
+			LotID       uuid.UUID      `json:"lotID"`
+			LotName     string         `json:"lotName"`
+			Title       string         `json:"title"`
+			Description sql.NullString `json:"description"`
+			Score       int32          `json:"score"`
+			CreatedAt   time.Time      `json:"createdAt"`
+			UpdatedAt   time.Time      `json:"updatedAt"`
+			ReviewType  string         `json:"reviewType"`
+		}{
+			UserID:      u.Userid,
+			UserName:    u.Username,
+			LotID:       u.Lotid,
+			LotName:     u.Lotname,
+			Title:       u.Title,
+			Description: u.Description,
+			Score:       u.Score,
+			CreatedAt:   u.CreatedAt,
+			UpdatedAt:   u.UpdatedAt,
+			ReviewType:  u.Reviewtype,
 		})
 	}
 

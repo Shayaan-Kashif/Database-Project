@@ -15,3 +15,8 @@ WHERE user_id = $1;
 -- name: GetCountOfLogsPerUser :many
 SELECT *
 FROM count_of_logs_per_user;
+
+-- name: GetHighestLowestRatingsFromUserID :many
+SELECT *
+FROM user_highest_lowest_ratings
+WHERE userid = $1;
