@@ -192,3 +192,148 @@ func (cfg *apiConfig) getHighestLowestRatingsFromUserID(res http.ResponseWriter,
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) getAverageLotRatingFromID(res http.ResponseWriter, req *http.Request) {
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	averageLotRatingDB, err := cfg.dbQueries.GetAverageLotRatingFromID(req.Context(), lotID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := struct {
+		AverageRating string `json:"averageRating"`
+		TotalReviews  int64  `json:"totalReviewCount"`
+	}{
+		AverageRating: averageLotRatingDB.Averagerating,
+		TotalReviews:  averageLotRatingDB.Totalreviews,
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) getCountOfReviewsPerUser(res http.ResponseWriter, req *http.Request) {
+	countOfReviewsDB, err := cfg.dbQueries.GetCountOfReviewsPerUser(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID           uuid.UUID `json:"id"`
+		Name         string    `json:"name"`
+		TotalReviews int64     `json:"totalReviews"`
+	}, 0, len(countOfReviewsDB))
+
+	for _, u := range countOfReviewsDB {
+		response = append(response, struct {
+			ID           uuid.UUID `json:"id"`
+			Name         string    `json:"name"`
+			TotalReviews int64     `json:"totalReviews"`
+		}{
+			ID:           u.Userid,
+			Name:         u.Username,
+			TotalReviews: u.Totalreviews,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) getCountOfReviewsPerLot(res http.ResponseWriter, req *http.Request) {
+	countOfReviewsDB, err := cfg.dbQueries.GetCountOfReviewsPerLot(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID           uuid.UUID `json:"id"`
+		Name         string    `json:"name"`
+		TotalReviews int64     `json:"totalReviews"`
+	}, 0, len(countOfReviewsDB))
+
+	for _, u := range countOfReviewsDB {
+		response = append(response, struct {
+			ID           uuid.UUID `json:"id"`
+			Name         string    `json:"name"`
+			TotalReviews int64     `json:"totalReviews"`
+		}{
+			ID:           u.Lotid,
+			Name:         u.Lotname,
+			TotalReviews: u.Totalreviews,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) getCountOfLogsPerLot(res http.ResponseWriter, req *http.Request) {
+	countOfLogsDB, err := cfg.dbQueries.GetCountOfLogsPerLot(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID           uuid.UUID `json:"id"`
+		Name         string    `json:"name"`
+		TotalEntries int64     `json:"totalEntries"`
+	}, 0, len(countOfLogsDB))
+
+	for _, u := range countOfLogsDB {
+		response = append(response, struct {
+			ID           uuid.UUID `json:"id"`
+			Name         string    `json:"name"`
+			TotalEntries int64     `json:"totalEntries"`
+		}{
+			ID:           u.Lotid,
+			Name:         u.Lotname,
+			TotalEntries: u.Totalentries,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) getFullLots(res http.ResponseWriter, req *http.Request) {
+	fullLotsDB, err := cfg.dbQueries.GetFullLots(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID            uuid.UUID `json:"id"`
+		Name          string    `json:"name"`
+		Slots         int32     `json:"slots"`
+		OccupiedSlots int32     `json:"occupiedSlots"`
+	}, 0, len(fullLotsDB))
+
+	for _, u := range fullLotsDB {
+		response = append(response, struct {
+			ID            uuid.UUID `json:"id"`
+			Name          string    `json:"name"`
+			Slots         int32     `json:"slots"`
+			OccupiedSlots int32     `json:"occupiedSlots"`
+		}{
+			ID:            u.ID,
+			Name:          u.Name,
+			Slots:         u.Slots,
+			OccupiedSlots: u.Occupiedslots,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}

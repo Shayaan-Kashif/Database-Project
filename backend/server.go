@@ -66,6 +66,11 @@ func main() {
 	serverMux.Handle("GET /api/avgTimeParked", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAvgTimeParkedFromUserID)))
 	serverMux.HandleFunc("GET /api/countOfLogsPerUser", apiConfig.getCountOfLogsPerUser)
 	serverMux.Handle("GET /api/highestLowestRatings", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getHighestLowestRatingsFromUserID)))
+	serverMux.HandleFunc("GET /api/averageLotRating/{lotID}", apiConfig.getAverageLotRatingFromID)
+	serverMux.HandleFunc("GET /api/countOfReviewsPerUser", apiConfig.getCountOfReviewsPerUser)
+	serverMux.HandleFunc("GET /api/countOfReviewsPerLot", apiConfig.getCountOfReviewsPerLot)
+	serverMux.HandleFunc("GET /api/countOfLogsPerLot", apiConfig.getCountOfLogsPerLot)
+	serverMux.HandleFunc("GET /api/fullLots", apiConfig.getFullLots)
 
 	fmt.Println("server is running on http://localhost:8080")
 

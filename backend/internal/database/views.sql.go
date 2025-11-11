@@ -11,6 +11,24 @@ import (
 	"github.com/google/uuid"
 )
 
+const getAverageLotRatingFromID = `-- name: GetAverageLotRatingFromID :one
+SELECT lotid, lotname, averagerating, totalreviews
+FROM average_lot_ratings
+WHERE lotid = $1
+`
+
+func (q *Queries) GetAverageLotRatingFromID(ctx context.Context, lotid uuid.UUID) (AverageLotRating, error) {
+	row := q.db.QueryRowContext(ctx, getAverageLotRatingFromID, lotid)
+	var i AverageLotRating
+	err := row.Scan(
+		&i.Lotid,
+		&i.Lotname,
+		&i.Averagerating,
+		&i.Totalreviews,
+	)
+	return i, err
+}
+
 const getAverageParkingTimeFromUserID = `-- name: GetAverageParkingTimeFromUserID :one
 SELECT user_id, user_name, avg_minutes_parked
 FROM avg_parking_time_per_user
@@ -22,6 +40,34 @@ func (q *Queries) GetAverageParkingTimeFromUserID(ctx context.Context, userID uu
 	var i AvgParkingTimePerUser
 	err := row.Scan(&i.UserID, &i.UserName, &i.AvgMinutesParked)
 	return i, err
+}
+
+const getCountOfLogsPerLot = `-- name: GetCountOfLogsPerLot :many
+SELECT lotid, lotname, totalentries
+FROM count_of_logs_per_lot
+`
+
+func (q *Queries) GetCountOfLogsPerLot(ctx context.Context) ([]CountOfLogsPerLot, error) {
+	rows, err := q.db.QueryContext(ctx, getCountOfLogsPerLot)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountOfLogsPerLot
+	for rows.Next() {
+		var i CountOfLogsPerLot
+		if err := rows.Scan(&i.Lotid, &i.Lotname, &i.Totalentries); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getCountOfLogsPerUser = `-- name: GetCountOfLogsPerUser :many
@@ -39,6 +85,95 @@ func (q *Queries) GetCountOfLogsPerUser(ctx context.Context) ([]CountOfLogsPerUs
 	for rows.Next() {
 		var i CountOfLogsPerUser
 		if err := rows.Scan(&i.Userid, &i.Username, &i.Totalentries); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCountOfReviewsPerLot = `-- name: GetCountOfReviewsPerLot :many
+SELECT lotid, lotname, totalreviews
+FROM count_of_review_per_lot
+`
+
+func (q *Queries) GetCountOfReviewsPerLot(ctx context.Context) ([]CountOfReviewPerLot, error) {
+	rows, err := q.db.QueryContext(ctx, getCountOfReviewsPerLot)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountOfReviewPerLot
+	for rows.Next() {
+		var i CountOfReviewPerLot
+		if err := rows.Scan(&i.Lotid, &i.Lotname, &i.Totalreviews); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCountOfReviewsPerUser = `-- name: GetCountOfReviewsPerUser :many
+SELECT userid, username, totalreviews
+FROM count_of_reviews_per_user
+`
+
+func (q *Queries) GetCountOfReviewsPerUser(ctx context.Context) ([]CountOfReviewsPerUser, error) {
+	rows, err := q.db.QueryContext(ctx, getCountOfReviewsPerUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountOfReviewsPerUser
+	for rows.Next() {
+		var i CountOfReviewsPerUser
+		if err := rows.Scan(&i.Userid, &i.Username, &i.Totalreviews); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFullLots = `-- name: GetFullLots :many
+SELECT id, name, slots, occupiedslots
+FROM full_parking_lots
+`
+
+func (q *Queries) GetFullLots(ctx context.Context) ([]FullParkingLot, error) {
+	rows, err := q.db.QueryContext(ctx, getFullLots)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FullParkingLot
+	for rows.Next() {
+		var i FullParkingLot
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slots,
+			&i.Occupiedslots,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
