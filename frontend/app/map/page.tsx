@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   MapContainer,
@@ -27,11 +27,34 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Parking lot interface
+// Types
 interface ParkingLot {
   id: string;
   coordinates: LatLngExpression[];
   color: string;
+}
+
+interface LotDetails {
+  id: string;
+  name: string;
+  slots: number;
+  occupiedSlots?: number;
+  ocupiedSlots?: number;
+}
+
+interface Review {
+  userID: string;
+  username: string;
+  lotID: string;
+  lotName: string;
+  title: string;
+  description: {
+    String: string;
+    Valid: boolean;
+  };
+  score: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const parkingLots: ParkingLot[] = [
@@ -90,21 +113,132 @@ const parkingLots: ParkingLot[] = [
     ],
     color: 'purple',
   },
+
+  {
+    id: 'Commencement',
+    coordinates: [
+      [43.9423638, -78.8961019],
+      [43.9426865, -78.8944178],
+      [43.9411188, -78.8936571],
+      [43.9406545, -78.8954924],
+      [43.9414881, -78.8959799],
+      [43.9413935, -78.8963745],
+      [43.9419461, -78.8966357],
+      [43.9421021, -78.8960201],
+    ],
+    color: 'brown',
+  },
+
+
 ];
 
 export default function Map() {
   const router = useRouter();
+
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  const [lotDetails, setLotDetails] = useState<LotDetails | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [reviews, setReviews] = useState<Review[] | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+
   const handleLotClick = (lotId: string) => {
     setSelectedLot(lotId);
-    setIsSheetOpen(true); // open the Sheet when a lot is selected
+    setIsSheetOpen(true);
   };
+
+  // Fetch lot details
+  useEffect(() => {
+    let aborted = false;
+
+    async function fetchLots() {
+      if (!selectedLot || !isSheetOpen) return;
+
+      setLoading(true);
+      setError(null);
+      setLotDetails(null);
+
+      try {
+        const res = await fetch("http://localhost:8080/api/parkingLots", {
+          cache: "no-store",
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+
+        const data: LotDetails[] = await res.json();
+        if (aborted) return;
+
+        const match = data.find((d) => d.name === selectedLot);
+
+        if (!match) {
+          setError("No data found for this lot.");
+        } else {
+          setLotDetails(match);
+        }
+      } catch (e: any) {
+        if (!aborted) setError(e?.message ?? "Failed to load lot data");
+      } finally {
+        if (!aborted) setLoading(false);
+      }
+    }
+
+    fetchLots();
+    return () => {
+      aborted = true;
+    };
+  }, [selectedLot, isSheetOpen]);
+
+  // Fetch reviews after lotDetails loads
+  useEffect(() => {
+    let aborted = false;
+
+    async function fetchReviews() {
+      if (!lotDetails) return;
+
+      setReviews(null);
+      setReviewsLoading(true);
+      setReviewsError(null);
+
+      try {
+        const res = await fetch(
+          `http://localhost:8080/api/reviews/${lotDetails.id}`,
+          {
+            cache: "no-store",
+            credentials: "include",
+          }
+        );
+
+        if (!res.ok) throw new Error(`Failed to load reviews: ${res.status}`);
+
+        const data: Review[] = await res.json();
+        if (!aborted) setReviews(data);
+      } catch (e: any) {
+        if (!aborted) setReviewsError(e?.message ?? "Error loading reviews");
+      } finally {
+        if (!aborted) setReviewsLoading(false);
+      }
+    }
+
+    fetchReviews();
+    return () => {
+      aborted = true;
+    };
+  }, [lotDetails]);
+
+  const occupied =
+    lotDetails?.occupiedSlots ??
+    lotDetails?.ocupiedSlots ??
+    0;
 
   return (
     <div className="relative h-screen w-full rounded-lg overflow-hidden">
-      {/* Back to Dashboard Button */}
+      
+      {/* Back Button */}
       <div className="absolute top-[85px] left-4 z-[1000]">
         <Button
           onClick={() => router.push('/dashboard')}
@@ -115,9 +249,21 @@ export default function Map() {
           Back to Dashboard
         </Button>
       </div>
-      {/* The side Sheet */}
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent side="right" className="w-[400px]">
+
+      {/* Sidebar */}
+      <Sheet
+        open={isSheetOpen}
+        onOpenChange={(open) => {
+          setIsSheetOpen(open);
+          if (!open) {
+            setSelectedLot(null);
+            setLotDetails(null);
+            setReviews(null);
+          }
+        }}
+      >
+        <SheetContent side="right" className="w-[400px] overflow-y-auto">
+          
           {selectedLot ? (
             <>
               <SheetHeader>
@@ -126,10 +272,65 @@ export default function Map() {
                   Viewing details for <strong>{selectedLot}</strong>.
                 </SheetDescription>
               </SheetHeader>
+
+              {/* Lot Details */}
               <div className="mt-4 space-y-3">
-                <p>Available spots: 12</p>
-                <p>Zone: North Campus</p>
-                <Button className="w-full">Reserve Spot</Button>
+                {loading && <p>Loading...</p>}
+                {error && <p className="text-red-600">{error}</p>}
+                {!loading && !error && lotDetails && (
+                  <>
+                    <p>Total Slots: {lotDetails.slots}</p>
+                    <p>Occupied: {occupied}</p>
+                    <p>Available: {Math.max(0, lotDetails.slots - occupied)}</p>
+                    <Button className="w-full">Write a Review</Button>
+                  </>
+                )}
+              </div>
+
+              {/* Reviews Section */}
+              <div className="mt-6 pt-4 border-t">
+                <h3 className="text-lg font-semibold mb-2">Reviews</h3>
+
+                {reviewsLoading && <p>Loading reviews...</p>}
+                {reviewsError && <p className="text-red-600">{reviewsError}</p>}
+
+                {!reviewsLoading &&
+                  !reviewsError &&
+                  reviews &&
+                  reviews.length === 0 && <p>No reviews yet.</p>}
+
+                {!reviewsLoading &&
+                  !reviewsError &&
+                  reviews &&
+                  reviews.length > 0 && (
+                    <div className="space-y-3">
+                      {reviews.map((rev) => (
+                        <div
+                          key={`${rev.userID}-${rev.createdAt}`}
+                          className="p-3 rounded border bg-muted/30"
+                        >
+                          <p className="font-semibold">{rev.username}</p>
+
+                          <p className="font-medium">⭐ {rev.score}/5</p>
+
+                          <p className="text-lg font-bold mt-1">{rev.title}</p>
+
+                          {rev.description.Valid && (
+                            <p className="text-sm mt-1 whitespace-pre-wrap">
+                              {rev.description.String}
+                            </p>
+                          )}
+
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Created: {new Date(rev.createdAt).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Updated: {new Date(rev.updatedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
               </div>
             </>
           ) : (
@@ -138,7 +339,7 @@ export default function Map() {
         </SheetContent>
       </Sheet>
 
-      {/* The map */}
+      {/* Map */}
       <MapContainer
         center={[43.948, -78.897]}
         zoom={16}
@@ -150,7 +351,6 @@ export default function Map() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Render parking lots */}
         {parkingLots.map((lot) => (
           <Polygon
             key={lot.id}
@@ -168,7 +368,7 @@ export default function Map() {
               <Popup>
                 <div className="text-sm">
                   <p><strong>{lot.id}</strong></p>
-                  <p>Tap Reserve Spot in the side panel to continue.</p>
+                  <p>Select “Reserve Spot” in the right panel.</p>
                 </div>
               </Popup>
             )}
