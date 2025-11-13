@@ -20,6 +20,7 @@ type apiConfig struct {
 	dbQueries *database.Queries
 	JWTSecret string
 	adminCode string
+	db        *sql.DB
 }
 
 type ctxkey string
@@ -43,6 +44,7 @@ func main() {
 		dbQueries: database.New(db),
 		JWTSecret: os.Getenv("JWTSecret"),
 		adminCode: os.Getenv("ADMINCODE"),
+		db:        db,
 	}
 
 	serverMux := http.NewServeMux()
@@ -71,6 +73,7 @@ func main() {
 	serverMux.HandleFunc("GET /api/countOfReviewsPerLot", apiConfig.getCountOfReviewsPerLot)
 	serverMux.HandleFunc("GET /api/countOfLogsPerLot", apiConfig.getCountOfLogsPerLot)
 	serverMux.HandleFunc("GET /api/fullLots", apiConfig.getFullLots)
+	serverMux.Handle("POST /api/park", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.park)))
 
 	fmt.Println("server is running on http://localhost:8080")
 
