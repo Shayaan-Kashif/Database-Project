@@ -10,6 +10,7 @@ import {
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L, { LatLngExpression } from 'leaflet';
+
 import {
   Sheet,
   SheetContent,
@@ -17,8 +18,21 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+import { IconArrowLeft, IconX } from "@tabler/icons-react";
 
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -58,6 +72,7 @@ interface Review {
 }
 
 const parkingLots: ParkingLot[] = [
+  // ... your lot data unchanged ...
   {
     id: 'Founders 5',
     coordinates: [
@@ -68,6 +83,7 @@ const parkingLots: ParkingLot[] = [
     ],
     color: 'blue',
   },
+
   {
     id: 'Founders 2',
     coordinates: [
@@ -81,38 +97,38 @@ const parkingLots: ParkingLot[] = [
     ],
     color: 'green',
   },
-  {
-    id: 'Founders 4',
-    coordinates: [
-      [43.9500923, -78.8985136],
-      [43.9502584, -78.8976673],
-      [43.9496380, -78.8973582],
-      [43.9493981, -78.8982373],
-    ],
-    color: 'orange',
-  },
-  {
-    id: 'Founders 3',
-    coordinates: [
-      [43.9483961, -78.8987647],
-      [43.9484897, -78.8983637],
-      [43.9478795, -78.8981371],
-      [43.9478032, -78.8985153],
-    ],
-    color: 'black',
-  },
-  {
-    id: 'Founders 1',
-    coordinates: [
-      [43.9460000, -78.8956993],
-      [43.9460823, -78.8953781],
-      [43.9449244, -78.8948762],
-      [43.9448746, -78.8942083],
-      [43.9446393, -78.8940819],
-      [43.9444411, -78.8949888],
-    ],
-    color: 'purple',
-  },
+
+  // ... all your other lots including Commencement ...
+
+{ id: 'Founders 4', 
+  coordinates: [ 
+    [43.9500923, -78.8985136], 
+    [43.9502584, -78.8976673], 
+    [43.9496380, -78.8973582], 
+    [43.9493981, -78.8982373],
+   ], 
+   color: 'orange', },
+
+ { id: 'Founders 3', 
+  coordinates: [ 
+    [43.9483961, -78.8987647], 
+    [43.9484897, -78.8983637], 
+    [43.9478795, -78.8981371], 
+    [43.9478032, -78.8985153], 
+  ], 
+  color: 'black', }, 
+
+ { id: 'Founders 1', 
+  coordinates: [ 
+    [43.9460000, -78.8956993], 
+    [43.9460823, -78.8953781], 
+    [43.9449244, -78.8948762], 
+    [43.9448746, -78.8942083], 
+    [43.9446393, -78.8940819], 
+    [43.9444411, -78.8949888], 
+  ], 
+  color: 'purple', },
+
 
   {
     id: 'Commencement',
@@ -128,8 +144,6 @@ const parkingLots: ParkingLot[] = [
     ],
     color: 'brown',
   },
-
-
 ];
 
 export default function Map() {
@@ -145,6 +159,12 @@ export default function Map() {
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
+
+  // ⭐ NEW STATE FOR REVIEW POPUP
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewDescription, setReviewDescription] = useState("");
+  const [reviewScore, setReviewScore] = useState(5);
 
   const handleLotClick = (lotId: string) => {
     setSelectedLot(lotId);
@@ -235,6 +255,49 @@ export default function Map() {
     lotDetails?.ocupiedSlots ??
     0;
 
+  // ⭐ NEW: SUBMIT REVIEW HANDLER
+  async function submitReview() {
+    if (!lotDetails) return;
+
+    const body = {
+      parkingLotID: lotDetails.id,
+      title: reviewTitle,
+      description: reviewDescription,
+      score: reviewScore,
+    };
+
+    try {
+      const res = await fetch("http://localhost:8080/api/reviews", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + err.error);
+        return;
+      }
+
+      // Close dialog + clear fields
+      setReviewDialogOpen(false);
+      setReviewTitle("");
+      setReviewDescription("");
+      setReviewScore(5);
+
+      // Refresh reviews
+      const refreshed = await fetch(
+        `http://localhost:8080/api/reviews/${lotDetails.id}`,
+        { credentials: "include" }
+      );
+      setReviews(await refreshed.json());
+
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
   return (
     <div className="relative h-screen w-full rounded-lg overflow-hidden">
       
@@ -263,7 +326,7 @@ export default function Map() {
         }}
       >
         <SheetContent side="right" className="w-[400px] overflow-y-auto">
-          
+
           {selectedLot ? (
             <>
               <SheetHeader>
@@ -282,7 +345,14 @@ export default function Map() {
                     <p>Total Slots: {lotDetails.slots}</p>
                     <p>Occupied: {occupied}</p>
                     <p>Available: {Math.max(0, lotDetails.slots - occupied)}</p>
-                    <Button className="w-full">Write a Review</Button>
+
+                    {/* ⭐ Replace Reserve Spot button */}
+                    <Button
+                      className="w-full"
+                      onClick={() => setReviewDialogOpen(true)}
+                    >
+                      Write a Review
+                    </Button>
                   </>
                 )}
               </div>
@@ -309,11 +379,10 @@ export default function Map() {
                           key={`${rev.userID}-${rev.createdAt}`}
                           className="p-3 rounded border bg-muted/30"
                         >
-                          <p className="font-semibold">{rev.username}</p>
-
-                          <p className="font-medium">⭐ {rev.score}/5</p>
-
                           <p className="text-lg font-bold mt-1">{rev.title}</p>
+                          <p className="font-semibold">{rev.username}</p>
+                          <p className="font-medium">⭐ {rev.score}/5</p>
+                          
 
                           {rev.description.Valid && (
                             <p className="text-sm mt-1 whitespace-pre-wrap">
@@ -339,6 +408,61 @@ export default function Map() {
         </SheetContent>
       </Sheet>
 
+      {/* ⭐ NEW — WRITE REVIEW POPUP DIALOG */}
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent className="max-w-md">
+          
+          <div className="flex justify-between items-center">
+            <DialogTitle>Write a Review</DialogTitle>
+            <DialogClose>
+              <IconX className="w-5 h-5 cursor-pointer" />
+            </DialogClose>
+          </div>
+
+          <DialogHeader />
+
+          <div className="space-y-3 mt-2">
+            <div>
+              <label className="text-sm font-medium">Title</label>
+              <Input
+                value={reviewTitle}
+                onChange={(e) => setReviewTitle(e.target.value)}
+                placeholder="Great parking!"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Description (optional)</label>
+              <Textarea
+                value={reviewDescription}
+                onChange={(e) => setReviewDescription(e.target.value)}
+                placeholder="Your experience..."
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Score</label>
+              <select
+                className="border p-2 rounded w-full"
+                value={reviewScore}
+                onChange={(e) => setReviewScore(Number(e.target.value))}
+              >
+                {[1,2,3,4,5].map(n => (
+                  <option key={n} value={n}>{n} Stars</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button className="w-full" onClick={submitReview}>
+              Submit Review
+            </Button>
+          </DialogFooter>
+
+        </DialogContent>
+      </Dialog>
+
       {/* Map */}
       <MapContainer
         center={[43.948, -78.897]}
@@ -347,7 +471,7 @@ export default function Map() {
         className="h-full w-full z-0"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+          attribution='© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -368,7 +492,7 @@ export default function Map() {
               <Popup>
                 <div className="text-sm">
                   <p><strong>{lot.id}</strong></p>
-                  <p>Select “Reserve Spot” in the right panel.</p>
+                  <p>Click “Write a Review” in the right panel.</p>
                 </div>
               </Popup>
             )}
