@@ -5,14 +5,133 @@
 package database
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type AverageLotRating struct {
+	Lotid         uuid.UUID
+	Lotname       string
+	Averagerating string
+	Totalreviews  int64
+}
+
+type AvgParkingTimePerUser struct {
+	UserID           uuid.UUID
+	UserName         string
+	AvgMinutesParked string
+}
+
+type CountOfLogsPerLot struct {
+	Lotid        uuid.UUID
+	Lotname      string
+	Totalentries int64
+}
+
+type CountOfLogsPerUser struct {
+	Userid       uuid.NullUUID
+	Username     sql.NullString
+	Totalentries int64
+}
+
+type CountOfReviewPerLot struct {
+	Lotid        uuid.UUID
+	Lotname      string
+	Totalreviews int64
+}
+
+type CountOfReviewsPerUser struct {
+	Userid       uuid.UUID
+	Username     string
+	Totalreviews int64
+}
+
+type FullParkingLot struct {
+	ID            uuid.UUID
+	Name          string
+	Slots         int32
+	Occupiedslots int32
+}
+
+type ParkingLog struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	ParkingLotID uuid.UUID
+	EventType    string
+	Time         time.Time
+}
+
+type Parkinglot struct {
+	ID            uuid.UUID
+	Name          string
+	Slots         int32
+	Occupiedslots int32
+}
+
+type RefreshToken struct {
+	Token     string
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+	RevokedAt sql.NullTime
+}
+
+type Review struct {
+	UserID       uuid.UUID
+	ParkingLotID uuid.UUID
+	Title        string
+	Description  sql.NullString
+	Score        int32
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
 
 type Test struct {
 	ID        uuid.UUID
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type TopRatedLot struct {
+	ID    uuid.UUID
+	Name  string
+	Round string
+}
+
+type User struct {
+	ID             uuid.UUID
+	Name           string
+	Email          string
+	HashedPassword string
+	Role           string
+	ParkingLotID   uuid.NullUUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type UserHighestLowestRating struct {
+	Userid      uuid.UUID
+	Username    string
+	Lotid       uuid.UUID
+	Lotname     string
+	Title       string
+	Description sql.NullString
+	Score       int32
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Reviewtype  string
+}
+
+type UserReviewsWithLot struct {
+	Userid      uuid.UUID
+	Username    string
+	Lotid       uuid.UUID
+	Lotname     string
+	Title       string
+	Description sql.NullString
+	Score       int32
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
