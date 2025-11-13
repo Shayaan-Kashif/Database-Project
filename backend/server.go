@@ -20,6 +20,7 @@ type apiConfig struct {
 	dbQueries *database.Queries
 	JWTSecret string
 	adminCode string
+	db        *sql.DB
 }
 
 type ctxkey string
@@ -43,6 +44,7 @@ func main() {
 		dbQueries: database.New(db),
 		JWTSecret: os.Getenv("JWTSecret"),
 		adminCode: os.Getenv("ADMINCODE"),
+		db:        db,
 	}
 
 	serverMux := http.NewServeMux()
@@ -62,6 +64,16 @@ func main() {
 	serverMux.Handle("POST /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.CreateReview)))
 	serverMux.Handle("PATCH /api/reviews/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
 	serverMux.HandleFunc("GET /api/reviews/{lotID}", apiConfig.getReviewsFromLotID)
+	serverMux.HandleFunc("GET /api/topRatedLots", apiConfig.getTopRatedLots)
+	serverMux.Handle("GET /api/avgTimeParked", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAvgTimeParkedFromUserID)))
+	serverMux.HandleFunc("GET /api/countOfLogsPerUser", apiConfig.getCountOfLogsPerUser)
+	serverMux.Handle("GET /api/highestLowestRatings", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getHighestLowestRatingsFromUserID)))
+	serverMux.HandleFunc("GET /api/averageLotRating/{lotID}", apiConfig.getAverageLotRatingFromID)
+	serverMux.HandleFunc("GET /api/countOfReviewsPerUser", apiConfig.getCountOfReviewsPerUser)
+	serverMux.HandleFunc("GET /api/countOfReviewsPerLot", apiConfig.getCountOfReviewsPerLot)
+	serverMux.HandleFunc("GET /api/countOfLogsPerLot", apiConfig.getCountOfLogsPerLot)
+	serverMux.HandleFunc("GET /api/fullLots", apiConfig.getFullLots)
+	serverMux.Handle("POST /api/park", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.park)))
 
 	fmt.Println("server is running on http://localhost:8080")
 

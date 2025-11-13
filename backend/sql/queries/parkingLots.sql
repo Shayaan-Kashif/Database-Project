@@ -11,3 +11,8 @@ VALUES (
     0
 )
 RETURNING *;
+
+-- name: UpdateOccupiedSlot :exec
+UPDATE parkinglots
+SET occupiedSlots = occupiedSlots + $1
+WHERE id = $2;
