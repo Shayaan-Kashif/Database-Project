@@ -155,7 +155,7 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 		Value:    refreshToken,
 		HttpOnly: true,
 		Secure:   false, //only for dev side, true for production
-		SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteLaxMode,
 		Path:     "/api/refresh",
 		MaxAge:   3600,
 	})
