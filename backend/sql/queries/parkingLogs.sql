@@ -11,4 +11,7 @@ VALUES (
 -- name: GetLogs :many
 SELECT * FROM parking_logs;
 
-
+-- name: GetLogsFromUserID :many
+SELECT *
+FROM parking_logs
+WHERE user_id = $1;

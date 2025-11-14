@@ -58,8 +58,10 @@ func main() {
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
 	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 	serverMux.HandleFunc("POST /api/login", apiConfig.login)
+	serverMux.Handle("GET /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getUserFromID)))
 	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
 	serverMux.HandleFunc("GET /api/parkingLots", apiConfig.getParkingLots)
+	serverMux.HandleFunc("GET /api/parkingLots/{lotID}", apiConfig.getParkingLotFromID)
 	serverMux.Handle("POST /api/parkingLots", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.createParkingLot)))
 	serverMux.Handle("POST /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.CreateReview)))
 	serverMux.Handle("PATCH /api/reviews/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
@@ -74,6 +76,7 @@ func main() {
 	serverMux.HandleFunc("GET /api/countOfLogsPerLot", apiConfig.getCountOfLogsPerLot)
 	serverMux.HandleFunc("GET /api/fullLots", apiConfig.getFullLots)
 	serverMux.Handle("POST /api/park", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.park)))
+	serverMux.Handle("GET /api/parkingLogs", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getParkingLogsFromUserID)))
 
 	fmt.Println("server is running on http://localhost:8080")
 

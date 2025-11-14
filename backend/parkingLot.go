@@ -87,3 +87,33 @@ func (cfg *apiConfig) createParkingLot(res http.ResponseWriter, req *http.Reques
 
 	respondWithJSON(res, http.StatusCreated, responseStruct)
 }
+
+func (cfg *apiConfig) getParkingLotFromID(res http.ResponseWriter, req *http.Request) {
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	parkingLotDB, err := cfg.dbQueries.GetParkingLotFromID(req.Context(), lotID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := struct {
+		ID            uuid.UUID `json:"id"`
+		Name          string    `json:"name"`
+		Slots         int32     `json:"slots"`
+		Occupiedslots int32     `json:"ocupiedSlots"`
+	}{
+		ID:            parkingLotDB.ID,
+		Name:          parkingLotDB.Name,
+		Slots:         parkingLotDB.Slots,
+		Occupiedslots: parkingLotDB.Occupiedslots,
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}

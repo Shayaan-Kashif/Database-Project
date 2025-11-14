@@ -379,4 +379,51 @@ Response:
 
 ---
 
+# 21. Get Lot Data From ID
 
+## GET /api/parkingLots/{lotID}
+
+```
+{
+    "id": "uuid",
+    "name": "Lot C",
+    "slots": 40,
+    "occupiedSlots": 40
+}
+```
+
+---
+
+# 22. Get Logs For User
+
+## GET /api/parkingLogs
+
+```
+{
+    "id": "uuid",
+    "userID": "uuid",
+    "parkingLotID": "uuid",
+    "eventType": "entry" or "exit"
+    "time": "timestamp"
+}
+```
+
+---
+
+# 23. Get User From JWT
+
+## GET /api/user
+
+```
+{
+    "id": "uuid",
+    "name": "Will",
+    "email": "will@test.com",
+    "role": "admin" or "user",
+    "parkingLotID": "uuid",
+    "createdAt": "timestamp",
+    "updatedAt": "timestamp"
+}
+```
+
+---

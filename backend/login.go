@@ -8,6 +8,7 @@ import (
 
 	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -217,4 +218,35 @@ func (cfg *apiConfig) refresh(res http.ResponseWriter, req *http.Request) {
 		AccessToken string `json:"access_token"`
 	}{AccessToken: JWT})
 
+}
+
+func (cfg *apiConfig) getUserFromID(res http.ResponseWriter, req *http.Request) {
+	userID := req.Context().Value(ctxUserID).(uuid.UUID)
+
+	userDB, err := cfg.dbQueries.GetUserFromID(req.Context(), userID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := struct {
+		ID           uuid.UUID     `json:"id"`
+		Name         string        `json:"name"`
+		Email        string        `json:"email"`
+		Role         string        `json:"role"`
+		ParkingLotID uuid.NullUUID `json:"parkingLotID"`
+		CreatedAt    time.Time     `json:"createdAt"`
+		UpdatedAt    time.Time     `json:"updatedAt"`
+	}{
+		ID:           userDB.ID,
+		Name:         userDB.Name,
+		Email:        userDB.Email,
+		Role:         userDB.Role,
+		ParkingLotID: userDB.ParkingLotID,
+		CreatedAt:    userDB.CreatedAt,
+		UpdatedAt:    userDB.UpdatedAt,
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
 }
