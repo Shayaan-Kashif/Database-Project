@@ -470,3 +470,18 @@ Response:
 ```
 
 ---
+
+# 26. Get ParkingLot History
+
+## GET /api/parkingHistory/{lotID}
+
+```
+[
+    {
+        "date": "YYYY-MM-DD",
+        "entries": 3
+    }
+]
+```
+
+---
