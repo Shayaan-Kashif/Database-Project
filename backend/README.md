@@ -400,13 +400,15 @@ Response:
 ## GET /api/parkingLogs
 
 ```
-{
-    "id": "uuid",
-    "userID": "uuid",
-    "parkingLotID": "uuid",
-    "eventType": "entry" or "exit"
-    "time": "timestamp"
-}
+[
+    {
+        "id": "uuid",
+        "userID": "uuid",
+        "parkingLotID": "uuid",
+        "eventType": "entry" or "exit"
+        "time": "timestamp"
+    }
+]
 ```
 
 ---
@@ -416,6 +418,7 @@ Response:
 ## GET /api/user
 
 ```
+
 {
     "id": "uuid",
     "name": "Will",
@@ -425,6 +428,45 @@ Response:
     "createdAt": "timestamp",
     "updatedAt": "timestamp"
 }
+
+```
+
+---
+
+# 24. Get All Users (Admin Only)
+
+## GET /api/user
+
+```
+[
+    {
+        "id": "uuid",
+        "name": "Will",
+        "email": "will@test.com",
+        "role": "admin" or "user",
+        "parkingLotID": "uuid",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+    }
+]
+```
+
+---
+
+# 25. Get All Logs (Admin Only)
+
+## GET /api/parkingLogsAll
+
+```
+[
+    {
+        "id": "uuid",
+        "userID": "uuid",
+        "parkingLotID": "uuid",
+        "eventType": "entry" or "exit"
+        "time": "timestamp"
+    }
+]
 ```
 
 ---
