@@ -222,3 +222,46 @@ func (cfg *apiConfig) getAllParkingLogs(res http.ResponseWriter, req *http.Reque
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) getParkingHistory(res http.ResponseWriter, req *http.Request) {
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := cfg.dbQueries.GetLogsFromLotID(req.Context(), lotID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		Date    string `json:"date"`
+		Entries int    `json:"entries"`
+	}, 0)
+
+	lastDate := ""
+
+	for _, u := range logs {
+		if u.EventType != "entry" {
+			continue
+		}
+
+		if u.Time.Format("2006-01-02") == lastDate {
+			response[len(response)-1].Entries += 1
+		} else {
+			response = append(response, struct {
+				Date    string `json:"date"`
+				Entries int    `json:"entries"`
+			}{
+				Date:    u.Time.Format("2006-01-02"),
+				Entries: 1,
+			})
+		}
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
