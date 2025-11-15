@@ -2,25 +2,6 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
@@ -116,16 +97,10 @@ export const schema = z.object({
   reviewer: z.string(),
 })
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: number }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
+// Create a separate component for the drag handle (now just a static icon)
+function DragHandle({ id: _id }: { id: number }) {
   return (
     <Button
-      {...attributes}
-      {...listeners}
       variant="ghost"
       size="icon"
       className="text-muted-foreground size-7 hover:bg-transparent"
@@ -312,20 +287,10 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 ]
 
 function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original.id,
-  })
-
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
+      className="relative z-0"
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -336,12 +301,42 @@ function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
   )
 }
 
+type Lot = Record<string, unknown>
+
+function getLotName(lot: Lot): string {
+  if (typeof lot.name === "string" && lot.name.length > 0) return lot.name
+  if (typeof (lot as any).lot_name === "string" && (lot as any).lot_name.length > 0)
+    return (lot as any).lot_name
+  return "Parking Lot"
+}
+
+function getLotRating(lot: Lot): number | null {
+  const avg = (lot as any).avgScore;
+  const num = typeof avg === "number" ? avg : Number(avg)
+  return Number.isFinite(num) ? num : null
+}
+
+function getLotCapacity(lot: Lot): number | null {
+  const cap = (lot as any).slots;
+  const num = typeof cap === "number" ? cap : Number(cap)
+  return Number.isFinite(num) ? num : null
+}
+
 export function DataTable({
   data: initialData,
 }: {
   data: z.infer<typeof schema>[]
 }) {
-  const [data, setData] = React.useState(() => initialData)
+  const data = initialData
+  const [activeTab, setActiveTab] = React.useState<
+    "outline" | "top-rated-lots" | "full-lots"
+  >("outline")
+  const [topRatedLots, setTopRatedLots] = React.useState<Lot[]>([])
+  const [fullLots, setFullLots] = React.useState<Lot[]>([])
+  const [loadingTopRated, setLoadingTopRated] = React.useState(false)
+  const [loadingFullLots, setLoadingFullLots] = React.useState(false)
+  const [errorTopRated, setErrorTopRated] = React.useState<string | null>(null)
+  const [errorFullLots, setErrorFullLots] = React.useState<string | null>(null)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -353,17 +348,53 @@ export function DataTable({
     pageIndex: 0,
     pageSize: 10,
   })
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
+  React.useEffect(() => {
+    async function fetchTopRatedLots() {
+      try {
+        setLoadingTopRated(true)
+        setErrorTopRated(null)
+        const res = await fetch("http://localhost:8080/api/topRatedLots", {
+          credentials: "include",
+        })
+        if (!res.ok) {
+          throw new Error(`Request failed with status ${res.status}`)
+        }
+        const json = await res.json()
+        setTopRatedLots(Array.isArray(json) ? json : [])
+      } catch (err) {
+        setErrorTopRated((err as Error).message)
+      } finally {
+        setLoadingTopRated(false)
+      }
+    }
 
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ id }) => id) || [],
-    [data]
-  )
+    async function fetchFullLots() {
+      try {
+        setLoadingFullLots(true)
+        setErrorFullLots(null)
+        const res = await fetch("http://localhost:8080/api/fullLots", {
+          credentials: "include",
+        })
+        if (!res.ok) {
+          throw new Error(`Request failed with status ${res.status}`)
+        }
+        const json = await res.json()
+        setFullLots(Array.isArray(json) ? json : [])
+      } catch (err) {
+        setErrorFullLots((err as Error).message)
+      } finally {
+        setLoadingFullLots(false)
+      }
+    }
+
+    if (activeTab === "top-rated-lots" && topRatedLots.length === 0 && !loadingTopRated) {
+      fetchTopRatedLots()
+    }
+
+    if (activeTab === "full-lots" && fullLots.length === 0 && !loadingFullLots) {
+      fetchFullLots()
+    }
+  }, [activeTab, fullLots.length, loadingFullLots, loadingTopRated, topRatedLots.length])
 
   const table = useReactTable({
     data,
@@ -390,27 +421,26 @@ export function DataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
-
   return (
     <Tabs
-      defaultValue="outline"
+      value={activeTab}
+      onValueChange={(value) =>
+        setActiveTab(value as "outline" | "top-rated-lots" | "full-lots")
+      }
       className="w-full flex-col justify-start gap-6"
     >
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Label htmlFor="view-selector" className="sr-only">
           View
         </Label>
-        <Select defaultValue="outline">
+        <Select
+          value={activeTab}
+          onValueChange={(value) =>
+            setActiveTab(
+              value as "outline" | "top-rated-lots" | "full-lots"
+            )
+          }
+        >
           <SelectTrigger
             className="flex w-fit @4xl/main:hidden"
             size="sm"
@@ -420,20 +450,18 @@ export function DataTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="outline">Outline</SelectItem>
-            <SelectItem value="past-performance">Past Performance</SelectItem>
-            <SelectItem value="key-personnel">Key Personnel</SelectItem>
-            <SelectItem value="focus-documents">Focus Documents</SelectItem>
+            <SelectItem value="top-rated-lots">Top Rated Lots</SelectItem>
+            <SelectItem value="full-lots">Full Lots</SelectItem>
           </SelectContent>
         </Select>
         <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
           <TabsTrigger value="outline">Outline</TabsTrigger>
-          <TabsTrigger value="past-performance">
-            Past Performance <Badge variant="secondary">3</Badge>
+          <TabsTrigger value="top-rated-lots">
+            Top Rated Lots 
           </TabsTrigger>
-          <TabsTrigger value="key-personnel">
-            Key Personnel <Badge variant="secondary">2</Badge>
+          <TabsTrigger value="full-lots">
+            Full Lots 
           </TabsTrigger>
-          <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
         </TabsList>
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -480,55 +508,42 @@ export function DataTable({
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
         <div className="overflow-hidden rounded-lg border">
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
-            id={sortableId}
-          >
-            <Table>
-              <TableHeader className="bg-muted sticky top-0 z-10">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id} colSpan={header.colSpan}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      )
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                {table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
+          <Table>
+            <TableHeader className="bg-muted sticky top-0 z-10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id} colSpan={header.colSpan}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    )
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody className="**:data-[slot=table-cell]:first:w-8">
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <DraggableRow key={row.id} row={row} />
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
                   >
-                    {table.getRowModel().rows.map((row) => (
-                      <DraggableRow key={row.id} row={row} />
-                    ))}
-                  </SortableContext>
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      No results.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </DndContext>
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
         <div className="flex items-center justify-between px-4">
           <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
@@ -609,19 +624,86 @@ export function DataTable({
         </div>
       </TabsContent>
       <TabsContent
-        value="past-performance"
-        className="flex flex-col px-4 lg:px-6"
+        value="top-rated-lots"
+        className="flex flex-col gap-4 px-4 lg:px-6"
       >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
+        {loadingTopRated && (
+          <div className="text-muted-foreground text-sm">Loading top rated lots...</div>
+        )}
+        {errorTopRated && !loadingTopRated && (
+          <div className="text-destructive text-sm">
+            Failed to load top rated lots: {errorTopRated}
+          </div>
+        )}
+        {!loadingTopRated && !errorTopRated && topRatedLots.length === 0 && (
+          <div className="text-muted-foreground text-sm">
+            No top rated lots found.
+          </div>
+        )}
+        {!loadingTopRated && !errorTopRated && topRatedLots.length > 0 && (
+          <div className="overflow-hidden rounded-lg border">
+            <Table>
+              <TableHeader className="bg-muted sticky top-0 z-10">
+                <TableRow>
+                  <TableHead>Lot</TableHead>
+                  <TableHead>Rating</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...topRatedLots]
+                  .sort((a, b) => (getLotRating(b) ?? 0) - (getLotRating(a) ?? 0))
+                  .map((lot, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{getLotName(lot)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {getLotRating(lot) ?? "N/A"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </TabsContent>
       <TabsContent
-        value="focus-documents"
-        className="flex flex-col px-4 lg:px-6"
+        value="full-lots"
+        className="flex flex-col gap-4 px-4 lg:px-6"
       >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
+        {loadingFullLots && (
+          <div className="text-muted-foreground text-sm">Loading full lots...</div>
+        )}
+        {errorFullLots && !loadingFullLots && (
+          <div className="text-destructive text-sm">
+            Failed to load full lots: {errorFullLots}
+          </div>
+        )}
+        {!loadingFullLots && !errorFullLots && fullLots.length === 0 && (
+          <div className="text-muted-foreground text-sm">No full lots found.</div>
+        )}
+        {!loadingFullLots && !errorFullLots && fullLots.length > 0 && (
+          <div className="overflow-hidden rounded-lg border">
+            <Table>
+              <TableHeader className="bg-muted sticky top-0 z-10">
+                <TableRow>
+                  <TableHead>Lot</TableHead>
+                  <TableHead>Capacity</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...fullLots]
+                  .sort((a, b) => (getLotCapacity(b) ?? 0) - (getLotCapacity(a) ?? 0))
+                  .map((lot, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{getLotName(lot)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {getLotCapacity(lot) ?? "N/A"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   )
