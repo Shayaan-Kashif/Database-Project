@@ -1,13 +1,5 @@
 'use client';
 
-// Helper to read cookies in client components
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -42,12 +34,20 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { IconArrowLeft, IconX } from "@tabler/icons-react";
 
+// Helper to read cookies in client components
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
   iconUrl: '/marker-icon.png',
   shadowUrl: '/marker-shadow.png',
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
 
 // Types
 interface ParkingLot {
