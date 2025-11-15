@@ -1,11 +1,5 @@
 'use client';
 
-// Helper to read cookies in client components
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
 
 
 import { useState, useEffect } from 'react';
@@ -41,6 +35,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { IconArrowLeft, IconX } from "@tabler/icons-react";
+
+import { useAuthStore } from "@/app/stores/useAuthStore";
+
+
 
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -155,9 +153,16 @@ const parkingLots: ParkingLot[] = [
 ];
 
 
-
 export default function Map() {
   const router = useRouter();
+
+   const { name, role, token } = useAuthStore();
+
+
+
+   console.log("Store token:", token);
+   console.log("Store role:", role);
+   console.log("Store name:", name);
 
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -278,10 +283,9 @@ export default function Map() {
       score: reviewScore,
     };
 
-    const accessToken = getCookie("access_token");
+    //const accessToken = getCookie("access_token");
 
-    console.log(accessToken);
-
+    console.log(token);
 
 
     try {
@@ -290,7 +294,7 @@ export default function Map() {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,   // ⭐ ADDED
+        "Authorization": `Bearer ${token}`,   // ⭐ ADDED
       },
       body: JSON.stringify(body),
     });
