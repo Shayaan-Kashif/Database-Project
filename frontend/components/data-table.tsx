@@ -329,14 +329,17 @@ export function DataTable({
 }) {
   const data = initialData
   const [activeTab, setActiveTab] = React.useState<
-    "outline" | "top-rated-lots" | "full-lots"
+    "outline" | "top-rated-lots" | "full-lots" | "available-lots"
   >("outline")
   const [topRatedLots, setTopRatedLots] = React.useState<Lot[]>([])
   const [fullLots, setFullLots] = React.useState<Lot[]>([])
+   const [availableLots, setAvailableLots] = React.useState<Lot[]>([])
   const [loadingTopRated, setLoadingTopRated] = React.useState(false)
   const [loadingFullLots, setLoadingFullLots] = React.useState(false)
+  const [loadingAvailableLots, setLoadingAvailableLots] = React.useState(false)
   const [errorTopRated, setErrorTopRated] = React.useState<string | null>(null)
   const [errorFullLots, setErrorFullLots] = React.useState<string | null>(null)
+  const [errorAvailableLots, setErrorAvailableLots] = React.useState<string | null>(null)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -387,14 +390,45 @@ export function DataTable({
       }
     }
 
+
+    async function fetchAvailableLots() {
+      try {
+        setLoadingFullLots(true)
+        setErrorFullLots(null)
+        const res = await fetch("http://localhost:8080/api/parkingLots", {
+          credentials: "include",
+        })
+        if (!res.ok) {
+          throw new Error(`Request failed with status ${res.status}`)
+        }
+        const json = await res.json()
+
+        const processed = json.map((lot: any) => ({
+          ...lot,
+          available: Number(lot.slots) - Number(lot.ocupiedSlots),
+        }))
+
+        const availableLots = processed.filter((lot: any) => lot.available > 0)
+        setAvailableLots(Array.isArray(availableLots) ? availableLots : [])
+      } catch (err) {
+        setErrorAvailableLots((err as Error).message)
+      } finally {
+        setLoadingAvailableLots(false)
+      }
+    }
+
     if (activeTab === "top-rated-lots" && topRatedLots.length === 0 && !loadingTopRated) {
       fetchTopRatedLots()
     }
 
-    if (activeTab === "full-lots" && fullLots.length === 0 && !loadingFullLots) {
-      fetchFullLots()
-    }
-  }, [activeTab, fullLots.length, loadingFullLots, loadingTopRated, topRatedLots.length])
+      if (activeTab === "full-lots" && fullLots.length === 0 && !loadingFullLots) {
+        fetchFullLots()
+      }
+      
+      if (activeTab === "available-lots" && availableLots.length === 0 && !loadingAvailableLots) {
+        fetchAvailableLots()
+      }
+  }, [activeTab, fullLots.length, loadingFullLots, loadingTopRated, topRatedLots.length, availableLots.length, loadingAvailableLots])
 
   const table = useReactTable({
     data,
@@ -437,7 +471,7 @@ export function DataTable({
           value={activeTab}
           onValueChange={(value) =>
             setActiveTab(
-              value as "outline" | "top-rated-lots" | "full-lots"
+              value as "outline" | "top-rated-lots" | "full-lots" | "available-lots"
             )
           }
         >
@@ -452,6 +486,7 @@ export function DataTable({
             <SelectItem value="outline">Outline</SelectItem>
             <SelectItem value="top-rated-lots">Top Rated Lots</SelectItem>
             <SelectItem value="full-lots">Full Lots</SelectItem>
+            <SelectItem value="available-lots">Available Lots</SelectItem>
           </SelectContent>
         </Select>
         <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
@@ -461,6 +496,9 @@ export function DataTable({
           </TabsTrigger>
           <TabsTrigger value="full-lots">
             Full Lots 
+          </TabsTrigger>
+          <TabsTrigger value="available-lots">
+            Available Lots 
           </TabsTrigger>
         </TabsList>
         <div className="flex items-center gap-2">
@@ -705,6 +743,59 @@ export function DataTable({
           </div>
         )}
       </TabsContent>
+        <TabsContent
+  value="available-lots"
+  className="flex flex-col gap-4 px-4 lg:px-6"
+>
+  {loadingAvailableLots && (
+    <div className="text-muted-foreground text-sm">Loading available lots...</div>
+  )}
+
+  {errorAvailableLots && !loadingAvailableLots && (
+    <div className="text-destructive text-sm">
+      Failed to load available lots: {errorAvailableLots}
+    </div>
+  )}
+
+  {!loadingAvailableLots && !errorAvailableLots && availableLots.length === 0 && (
+    <div className="text-muted-foreground text-sm">
+      No available lots found.
+    </div>
+  )}
+
+  {!loadingAvailableLots && !errorAvailableLots && availableLots.length > 0 && (
+    <div className="overflow-hidden rounded-lg border">
+      <Table>
+        <TableHeader className="bg-muted sticky top-0 z-10">
+          <TableRow>
+            <TableHead>Lot</TableHead>
+            <TableHead>Available</TableHead>
+            <TableHead>Total Slots</TableHead>
+            <TableHead>Occupied</TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {[...availableLots]
+            .sort((a, b) => (b.available ?? 0) - (a.available ?? 0))
+            .map((lot: any, index: number) => (
+              <TableRow key={index}>
+                <TableCell className="font-medium">{lot.name}</TableCell>
+                <TableCell>{lot.available}</TableCell>
+                <TableCell>{lot.slots}</TableCell>
+                <TableCell>{lot.ocupiedSlots}</TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+    </div>
+  )}
+</TabsContent>
+
+
+
+
+
     </Tabs>
   )
 }
