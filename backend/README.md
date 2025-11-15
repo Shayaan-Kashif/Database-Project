@@ -92,6 +92,7 @@ Success:
 {
     "access_token": "<jwt>",
     "name": "John Doe"
+    "role": "user" or "admin"
 }
 ```
 

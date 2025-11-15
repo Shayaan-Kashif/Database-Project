@@ -164,9 +164,11 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 	responseStruct := struct {
 		AccessToken string `json:"access_token"`
 		Name        string `json:"name"`
+		Role        string `json:"role"`
 	}{
 		AccessToken: JWT,
 		Name:        userDB.Name,
+		Role:        userDB.Role,
 	}
 
 	respondWithJSON(res, http.StatusOK, responseStruct)
