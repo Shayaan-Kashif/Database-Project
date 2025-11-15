@@ -38,6 +38,7 @@ import { IconArrowLeft, IconX } from "@tabler/icons-react";
 
 import { useAuthStore } from "@/app/stores/useAuthStore";
 
+import { tryRefresh } from "@/lib/tryRefresh"
 
 
 // Fix missing marker icons in Next.js
@@ -104,7 +105,6 @@ const parkingLots: ParkingLot[] = [
     color: 'green',
   },
 
-  // ... all your other lots including Commencement ...
 
 { id: 'Founders 4', 
   coordinates: [ 
@@ -156,13 +156,33 @@ const parkingLots: ParkingLot[] = [
 export default function Map() {
   const router = useRouter();
 
-   const { name, role, token } = useAuthStore();
+  const token = useAuthStore((state) => state.token);
+  const name = useAuthStore((state) => state.name);
+  const role = useAuthStore((state) => state.role);
 
 
 
    console.log("Store token:", token);
    console.log("Store role:", role);
    console.log("Store name:", name);
+
+  
+    useEffect(() => {
+      const checkAuth = async () => {
+        if (!token) {
+          const ok = await tryRefresh();
+          if (!ok) {
+            router.push("/login");
+            return;
+          }
+        }
+      };
+  
+      checkAuth();
+    }, [token, router]);
+  
+
+
 
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -285,10 +305,9 @@ export default function Map() {
 
     //const accessToken = getCookie("access_token");
 
-    console.log(token);
-
 
     try {
+
     const res = await fetch("http://localhost:8080/api/reviews", {
       method: "POST",
       credentials: "include",

@@ -1,3 +1,5 @@
+"use client";
+
 import { AppSidebar } from "@/components/app-sidebar"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
@@ -8,9 +10,31 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { tryRefresh } from "@/lib/tryRefresh"
+import { useAuthStore } from "@/app/stores/useAuthStore"
 import data from "./data.json"
 
 export default function Page() {
+  // ⭐ Only subscribe to token, not the whole store
+  const token = useAuthStore((state) => state.token);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!token) {
+        const ok = await tryRefresh();
+        if (!ok) {
+          router.push("/login");
+          return;
+        }
+      }
+    };
+
+    checkAuth();
+  }, [token, router]);
+
   return (
     <SidebarProvider
       style={
@@ -36,5 +60,5 @@ export default function Page() {
         </div>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }
