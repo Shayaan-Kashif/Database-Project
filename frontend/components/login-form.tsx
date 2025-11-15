@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { useAuthStore } from "@/app/stores/useAuthStore";
-
+import { setUserSession } from "@/app/utils/sessionAuth";
 import {
   Field,
   FieldDescription,
@@ -63,6 +63,8 @@ export function LoginForm({
         name,
         role,
       });
+
+      //setUserSession(name, role); //Storing in session 
 
       // ⭐ Optional: middleware cookie (not httpOnly)
       document.cookie = `access_token=${token}; path=/; max-age=900; SameSite=Lax`;

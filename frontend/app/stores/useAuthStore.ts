@@ -2,31 +2,39 @@
 
 import { create } from "zustand";
 
-interface AuthState {
-  token: string | null;
-  role: string | null;
-  name: string | null;
+export const useAuthStore = create((set, get) => ({
+  token: null as string | null,
+  name: null as string | null,
+  role: null as string | null,
 
-  setAuth: (data: { token?: string | null; role?: string | null; name?: string | null }) => void;
-  clearAuth: () => void;
-}
+  // Store everything in Zustand and put name+role in session
+  setAuth: ({ token, name, role }: any) => {
+    set({ token, name, role });
 
-export const useAuthStore = create<AuthState>((set) => ({
-  token: null,
-  role: null,
-  name: null,
+    sessionStorage.setItem("name", name);
+    sessionStorage.setItem("role", role);
+  },
 
-  setAuth: ({ token, role, name }) =>
-    set((state) => ({
-      token: token ?? state.token,
-      role: role ?? state.role,
-      name: name ?? state.name,
-    })),
+  // Only token changes during refresh
+  setToken: (token: string | null) => set({ token }),
 
-  clearAuth: () =>
-    set({
-      token: null,
-      role: null,
-      name: null,
-    }),
+  // Full logout
+  clearAuth: () => {
+    sessionStorage.removeItem("name");
+    sessionStorage.removeItem("role");
+    set({ token: null, name: null, role: null });
+  },
 }));
+
+// ⭐ Auto-restore name + role from sessionStorage after reload
+if (typeof window !== "undefined") {
+  const storedName = sessionStorage.getItem("name");
+  const storedRole = sessionStorage.getItem("role");
+
+  if (storedName || storedRole) {
+    useAuthStore.setState({
+      name: storedName ?? null,
+      role: storedRole ?? null,
+    });
+  }
+}
