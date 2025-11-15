@@ -180,3 +180,88 @@ func (cfg *apiConfig) getParkingLogsFromUserID(res http.ResponseWriter, req *htt
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) getAllParkingLogs(res http.ResponseWriter, req *http.Request) {
+	role := req.Context().Value(ctxRole).(string)
+
+	if role != "admin" {
+		respondWithError(res, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	parkingLogsDB, err := cfg.dbQueries.GetLogs(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID           uuid.UUID `json:"id"`
+		UserID       uuid.UUID `json:"userID"`
+		ParkingLotID uuid.UUID `json:"parkingLotID"`
+		EventType    string    `json:"eventType"`
+		Time         time.Time `json:"time"`
+	}, 0, len(parkingLogsDB))
+
+	for _, u := range parkingLogsDB {
+		response = append(response, struct {
+			ID           uuid.UUID `json:"id"`
+			UserID       uuid.UUID `json:"userID"`
+			ParkingLotID uuid.UUID `json:"parkingLotID"`
+			EventType    string    `json:"eventType"`
+			Time         time.Time `json:"time"`
+		}{
+			ID:           u.ID,
+			UserID:       u.UserID,
+			ParkingLotID: u.ParkingLotID,
+			EventType:    u.EventType,
+			Time:         u.Time,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) getParkingHistory(res http.ResponseWriter, req *http.Request) {
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := cfg.dbQueries.GetLogsFromLotID(req.Context(), lotID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		Date    string `json:"date"`
+		Entries int    `json:"entries"`
+	}, 0)
+
+	lastDate := ""
+
+	for _, u := range logs {
+		if u.EventType != "entry" {
+			continue
+		}
+
+		if u.Time.Format("2006-01-02") == lastDate {
+			response[len(response)-1].Entries += 1
+		} else {
+			response = append(response, struct {
+				Date    string `json:"date"`
+				Entries int    `json:"entries"`
+			}{
+				Date:    u.Time.Format("2006-01-02"),
+				Entries: 1,
+			})
+		}
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}

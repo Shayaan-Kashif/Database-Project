@@ -74,6 +74,42 @@ func (q *Queries) GetLogs(ctx context.Context) ([]ParkingLog, error) {
 	return items, nil
 }
 
+const getLogsFromLotID = `-- name: GetLogsFromLotID :many
+SELECT id, user_id, parking_lot_id, event_type, time
+FROM parking_logs
+WHERE parking_lot_id = $1
+ORDER BY time ASC
+`
+
+func (q *Queries) GetLogsFromLotID(ctx context.Context, parkingLotID uuid.UUID) ([]ParkingLog, error) {
+	rows, err := q.db.QueryContext(ctx, getLogsFromLotID, parkingLotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ParkingLog
+	for rows.Next() {
+		var i ParkingLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ParkingLotID,
+			&i.EventType,
+			&i.Time,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLogsFromUserID = `-- name: GetLogsFromUserID :many
 SELECT id, user_id, parking_lot_id, event_type, time
 FROM parking_logs

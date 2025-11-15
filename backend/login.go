@@ -252,3 +252,51 @@ func (cfg *apiConfig) getUserFromID(res http.ResponseWriter, req *http.Request) 
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) getAllUsers(res http.ResponseWriter, req *http.Request) {
+	role := req.Context().Value(ctxRole).(string)
+
+	if role != "admin" {
+		respondWithError(res, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	usersDB, err := cfg.dbQueries.GetAllUsers(req.Context())
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := make([]struct {
+		ID           uuid.UUID     `json:"id"`
+		Name         string        `json:"name"`
+		Email        string        `json:"email"`
+		Role         string        `json:"role"`
+		ParkingLotID uuid.NullUUID `json:"parkingLotID"`
+		CreatedAt    time.Time     `json:"createdAt"`
+		UpdatedAt    time.Time     `json:"updatedAt"`
+	}, 0, len(usersDB))
+
+	for _, u := range usersDB {
+		response = append(response, struct {
+			ID           uuid.UUID     `json:"id"`
+			Name         string        `json:"name"`
+			Email        string        `json:"email"`
+			Role         string        `json:"role"`
+			ParkingLotID uuid.NullUUID `json:"parkingLotID"`
+			CreatedAt    time.Time     `json:"createdAt"`
+			UpdatedAt    time.Time     `json:"updatedAt"`
+		}{
+			ID:           u.ID,
+			Name:         u.Name,
+			Email:        u.Email,
+			Role:         u.Role,
+			ParkingLotID: u.ParkingLotID,
+			CreatedAt:    u.CreatedAt,
+			UpdatedAt:    u.CreatedAt,
+		})
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
+}
