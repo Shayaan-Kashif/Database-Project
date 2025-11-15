@@ -106,35 +106,23 @@ const data = {
     },
   ],
   navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
+    
+    
+   
   ],
   documents: [
     {
-      name: "Data Library",
+      name: "Parking Lots Managment",
       url: "#",
       icon: IconDatabase,
     },
     {
-      name: "Reports",
+      name: "User Logs",
       url: "#",
       icon: IconReport,
     },
     {
-      name: "Word Assistant",
+      name: "Review Managment",
       url: "#",
       icon: IconFileWord,
     },
