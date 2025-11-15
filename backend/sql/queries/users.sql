@@ -16,3 +16,14 @@ RETURNING id, name, email, role;
 SELECT * FROM users
 WHERE email = $1;
 
+
+-- name: GetUserFromID :one
+SELECT * FROM users
+WHERE id  = $1; 
+
+-- name: UpdateUserParkingLot :exec
+UPDATE users
+SET parking_lot_id = $1
+WHERE id = $2;
+
+

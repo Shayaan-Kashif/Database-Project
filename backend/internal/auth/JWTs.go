@@ -11,24 +11,20 @@ import (
 )
 
 type CustomeClaims struct {
-		Role string `json:"role"`
-		jwt.RegisteredClaims
-	}
+	Role string `json:"role"`
+	jwt.RegisteredClaims
+}
 
 func MakeJWT(userID uuid.UUID, role, tokenSecret string, expiresIn time.Duration) (string, error) {
-
-	
-
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, CustomeClaims{
 		Role: role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer: "OntarioTechParkingGO",
-			IssuedAt: jwt.NewNumericDate(time.Now().UTC()),
+			Issuer:    "OntarioTechParkingGO",
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
-			Subject: userID.String(),
+			Subject:   userID.String(),
 		},
-		
 	})
 
 	return token.SignedString([]byte(tokenSecret))
@@ -37,16 +33,16 @@ func MakeJWT(userID uuid.UUID, role, tokenSecret string, expiresIn time.Duration
 
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, string, error) {
 	claim := &CustomeClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, claim, func(t *jwt.Token)(interface{}, error){
+	token, err := jwt.ParseWithClaims(tokenString, claim, func(t *jwt.Token) (interface{}, error) {
 		return []byte(tokenSecret), nil
 	})
 
 	if err != nil {
-		return uuid.Nil,"", err
+		return uuid.Nil, "", err
 	}
 
 	if token == nil || !token.Valid {
-		return uuid.Nil,"", fmt.Errorf("token not valid")
+		return uuid.Nil, "", fmt.Errorf("token not valid")
 	}
 
 	userID, err := uuid.Parse(claim.Subject)
@@ -60,7 +56,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, string, error) {
 func GetBearerToken(header http.Header) (string, error) {
 	authData := header.Get("Authorization")
 	if authData == "" {
-		return authData, fmt.Errorf("there is no token")
+		return authData, fmt.Errorf("there is no access token")
 	}
 
 	return strings.Fields(authData)[1], nil

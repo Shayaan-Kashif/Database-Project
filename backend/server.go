@@ -1,23 +1,34 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
 	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type apiConfig struct {
 	dbQueries *database.Queries
 	JWTSecret string
 	adminCode string
+	db        *sql.DB
 }
+
+type ctxkey string
+
+const (
+	ctxUserID ctxkey = "userID"
+	ctxRole   ctxkey = "role"
+)
 
 func main() {
 	godotenv.Load()
@@ -33,6 +44,7 @@ func main() {
 		dbQueries: database.New(db),
 		JWTSecret: os.Getenv("JWTSecret"),
 		adminCode: os.Getenv("ADMINCODE"),
+		db:        db,
 	}
 
 	serverMux := http.NewServeMux()
@@ -46,9 +58,25 @@ func main() {
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
 	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 	serverMux.HandleFunc("POST /api/login", apiConfig.login)
+	serverMux.Handle("GET /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getUserFromID)))
 	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
 	serverMux.HandleFunc("GET /api/parkingLots", apiConfig.getParkingLots)
-	serverMux.HandleFunc("POST /api/parkingLots", apiConfig.createParkingLot)
+	serverMux.HandleFunc("GET /api/parkingLots/{lotID}", apiConfig.getParkingLotFromID)
+	serverMux.Handle("POST /api/parkingLots", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.createParkingLot)))
+	serverMux.Handle("POST /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.CreateReview)))
+	serverMux.Handle("PATCH /api/reviews/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
+	serverMux.HandleFunc("GET /api/reviews/{lotID}", apiConfig.getReviewsFromLotID)
+	serverMux.HandleFunc("GET /api/topRatedLots", apiConfig.getTopRatedLots)
+	serverMux.Handle("GET /api/avgTimeParked", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAvgTimeParkedFromUserID)))
+	serverMux.HandleFunc("GET /api/countOfLogsPerUser", apiConfig.getCountOfLogsPerUser)
+	serverMux.Handle("GET /api/highestLowestRatings", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getHighestLowestRatingsFromUserID)))
+	serverMux.HandleFunc("GET /api/averageLotRating/{lotID}", apiConfig.getAverageLotRatingFromID)
+	serverMux.HandleFunc("GET /api/countOfReviewsPerUser", apiConfig.getCountOfReviewsPerUser)
+	serverMux.HandleFunc("GET /api/countOfReviewsPerLot", apiConfig.getCountOfReviewsPerLot)
+	serverMux.HandleFunc("GET /api/countOfLogsPerLot", apiConfig.getCountOfLogsPerLot)
+	serverMux.HandleFunc("GET /api/fullLots", apiConfig.getFullLots)
+	serverMux.Handle("POST /api/park", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.park)))
+	serverMux.Handle("GET /api/parkingLogs", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getParkingLogsFromUserID)))
 
 	fmt.Println("server is running on http://localhost:8080")
 
@@ -134,4 +162,38 @@ func withCORS(next http.Handler) http.Handler {
 
 		next.ServeHTTP(res, req)
 	})
+}
+
+func (cfg *apiConfig) authMiddleWare(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		token, err := auth.GetBearerToken(req.Header)
+		if err != nil {
+			respondWithError(res, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		userID, role, err := auth.ValidateJWT(token, cfg.JWTSecret)
+		if err != nil {
+			respondWithError(res, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		ctx := req.Context()
+
+		ctx = context.WithValue(ctx, ctxUserID, userID)
+		ctx = context.WithValue(ctx, ctxRole, role)
+
+		next.ServeHTTP(res, req.WithContext(ctx))
+
+	})
+}
+
+func handlePgConstraints(err error) (bool, string) {
+	var pqErr *pq.Error
+	//postgres violation codes: unique, foreign key, check, not null violation in that order
+	if errors.As(err, &pqErr) && (pqErr.Code == "23505" || pqErr.Code == "23503" || pqErr.Code == "23514" || pqErr.Code == "23502") {
+		return true, pqErr.Message
+	}
+
+	return false, ""
 }
