@@ -59,6 +59,7 @@ func main() {
 	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 	serverMux.HandleFunc("POST /api/login", apiConfig.login)
 	serverMux.Handle("GET /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getUserFromID)))
+	serverMux.Handle("GET /api/users", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAllUsers)))
 	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
 	serverMux.HandleFunc("GET /api/parkingLots", apiConfig.getParkingLots)
 	serverMux.HandleFunc("GET /api/parkingLots/{lotID}", apiConfig.getParkingLotFromID)
@@ -77,6 +78,8 @@ func main() {
 	serverMux.HandleFunc("GET /api/fullLots", apiConfig.getFullLots)
 	serverMux.Handle("POST /api/park", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.park)))
 	serverMux.Handle("GET /api/parkingLogs", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getParkingLogsFromUserID)))
+	serverMux.Handle("GET /api/parkingLogsAll", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAllParkingLogs)))
+	serverMux.HandleFunc("GET /api/parkingHistory/{lotID}", apiConfig.getParkingHistory)
 
 	fmt.Println("server is running on http://localhost:8080")
 

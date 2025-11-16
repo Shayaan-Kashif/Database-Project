@@ -1,11 +1,5 @@
 'use client';
 
-// Helper to read cookies in client components
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
 
 
 import { useState, useEffect } from 'react';
@@ -41,6 +35,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { IconArrowLeft, IconX } from "@tabler/icons-react";
+
+import { useAuthStore } from "@/app/stores/useAuthStore";
+
+import { tryRefresh } from "@/lib/tryRefresh"
+
 
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -106,7 +105,6 @@ const parkingLots: ParkingLot[] = [
     color: 'green',
   },
 
-  // ... all your other lots including Commencement ...
 
 { id: 'Founders 4', 
   coordinates: [ 
@@ -155,9 +153,36 @@ const parkingLots: ParkingLot[] = [
 ];
 
 
-
 export default function Map() {
   const router = useRouter();
+
+  const token = useAuthStore((state) => state.token);
+  const name = useAuthStore((state) => state.name);
+  const role = useAuthStore((state) => state.role);
+
+
+
+   console.log("Store token:", token);
+   console.log("Store role:", role);
+   console.log("Store name:", name);
+
+  
+    useEffect(() => {
+      const checkAuth = async () => {
+        if (!token) {
+          const ok = await tryRefresh();
+          if (!ok) {
+            router.push("/login");
+            return;
+          }
+        }
+      };
+  
+      checkAuth();
+    }, [token, router]);
+  
+
+
 
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -278,19 +303,17 @@ export default function Map() {
       score: reviewScore,
     };
 
-    const accessToken = getCookie("access_token");
-
-    console.log(accessToken);
-
+    //const accessToken = getCookie("access_token");
 
 
     try {
+
     const res = await fetch("http://localhost:8080/api/reviews", {
       method: "POST",
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,   // ⭐ ADDED
+        "Authorization": `Bearer ${token}`,   // ⭐ ADDED
       },
       body: JSON.stringify(body),
     });

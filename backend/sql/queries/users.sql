@@ -26,4 +26,5 @@ UPDATE users
 SET parking_lot_id = $1
 WHERE id = $2;
 
-
+-- name: GetAllUsers :many
+SELECT * FROM users;

@@ -1,3 +1,4 @@
+
 /**
  * Helper function to get the access token from cookies
  */
@@ -37,6 +38,9 @@ function deleteCookie(name: string, path: string = '/') {
 export function logout(): void {
   // Delete access_token cookie if it exists (client-side cookie)
   deleteCookie('access_token');
+  sessionStorage.removeItem("name");
+  sessionStorage.removeItem("role");
+
   
   // Redirect to login page
   if (typeof window !== 'undefined') {
