@@ -201,9 +201,37 @@ export default function Map() {
   const [reviewDescription, setReviewDescription] = useState("");
   const [reviewScore, setReviewScore] = useState(5);
 
-  const handleLotClick = (lotId: string) => {
+  // Track where the current user is parked
+  const [userParkingLotId, setUserParkingLotId] = useState<string | null>(null);
+  const [userLoading, setUserLoading] = useState(false);
+
+  const handleLotClick = async (lotId: string) => {
     setSelectedLot(lotId);
     setIsSheetOpen(true);
+
+    // Fetch current user to see if they are parked in this lot
+    setUserLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/api/user", {
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserParkingLotId(data.parkingLotID || null);
+      } else {
+        setUserParkingLotId(null);
+      }
+    } catch {
+      setUserParkingLotId(null);
+    } finally {
+      setUserLoading(false);
+    }
   };
 
   // Fetch lot details
@@ -342,6 +370,87 @@ export default function Map() {
     }
   }
 
+
+async function deleteReview(userID: string, parkingLotID: string) {
+  try {
+    const res = await fetch("http://localhost:8080/api/reviews", {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, 
+      },
+      body: JSON.stringify({
+        userID,
+        parkingLotID,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert("Error: " + err.error);
+      return;
+    }
+
+    const data = await res.json();
+    alert(data.status);
+
+    // Refresh reviews list
+    const refreshed = await fetch(
+      `http://localhost:8080/api/reviews/${parkingLotID}`,
+      { credentials: "include" }
+    );
+    setReviews(await refreshed.json());
+
+  } catch (err: any) {
+    alert(err.message);
+  }
+}
+
+
+async function handleParkHere() {
+  if (!lotDetails) return;
+
+  const isCurrentlyParkedHere = userParkingLotId === lotDetails.id;
+  const type = isCurrentlyParkedHere ? "exit" : "entry";
+
+  try {
+    const res = await fetch("http://localhost:8080/api/park", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        parkingLotID: lotDetails.id,
+        type,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert("Error: " + (err.error ?? "Failed to update parking status"));
+      return;
+    }
+
+    const data = await res.json();
+    alert(data.status ?? "Parking status updated");
+
+    // Update local parking state
+    if (type === "entry") {
+      setUserParkingLotId(lotDetails.id);
+    } else {
+      setUserParkingLotId(null);
+    }
+  } catch (err: any) {
+    alert(err.message);
+  }
+}
+
+
+
+
   return (
     <div className="relative h-screen w-full rounded-lg overflow-hidden">
       
@@ -397,6 +506,14 @@ export default function Map() {
                     >
                       Write a Review
                     </Button>
+
+                    <Button
+                      className="w-full mt-2"
+                      variant="outline"
+                      onClick={handleParkHere}
+                    >
+                      {userParkingLotId === lotDetails.id ? "Leave lot" : "Im parked here"}
+                    </Button>
                   </>
                 )}
               </div>
@@ -419,31 +536,60 @@ export default function Map() {
                   reviews.length > 0 && (
                     <div className="space-y-3">
                       {reviews.map((rev) => (
-                        <div
-                          key={`${rev.userID}-${rev.createdAt}`}
-                          className="p-3 rounded border bg-muted/30"
-                        >
-                          <p className="text-lg font-bold mt-1">{rev.title}</p>
-                          <p className="font-semibold">{rev.username}</p>
-                          <p className="font-medium">⭐ {rev.score}/5</p>
-                          
+  <div
+    key={`${rev.userID}-${rev.createdAt}`}
+    className="p-3 rounded border bg-muted/30"
+  >
+    <p className="text-lg font-bold mt-1">{rev.title}</p>
+    <p className="font-semibold">{rev.username}</p>
+    <p className="font-medium">⭐ {rev.score}/5</p>
 
-                          {rev.description.Valid && (
-                            <p className="text-sm mt-1 whitespace-pre-wrap">
-                              {rev.description.String}
-                            </p>
-                          )}
+    {rev.description.Valid && (
+      <p className="text-sm mt-1 whitespace-pre-wrap">
+        {rev.description.String}
+      </p>
+    )}
 
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Created: {new Date(rev.createdAt).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Updated: {new Date(rev.updatedAt).toLocaleString()}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+    <p className="text-xs text-muted-foreground mt-2">
+      Created: {new Date(rev.createdAt).toLocaleString()}
+    </p>
+    <p className="text-xs text-muted-foreground">
+      Updated: {new Date(rev.updatedAt).toLocaleString()}
+    </p>
+
+          {/* ⭐ Show controls ONLY if current user made the review */}
+          {rev.userID ===  ""&& (
+            <div className="flex gap-2 mt-3">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => console.log("Edit coming soon")}
+              >
+                Edit
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => console.log("Mark parked coming soon")}
+              >
+                I’m Parked?
+              </Button>
+
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => deleteReview(rev.userID, rev.lotID)}
+              >
+                Delete
+              </Button>
+            </div>
+          )}
+
+        </div>
+      ))}
+                  </div>
+                )}
               </div>
             </>
           ) : (
