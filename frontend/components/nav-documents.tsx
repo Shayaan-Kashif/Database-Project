@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  IconDots,
-  IconFolder,
-  IconShare3,
-  IconTrash,
-  type Icon,
-} from "@tabler/icons-react";
-
+import { usePathname } from "next/navigation";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -25,12 +18,10 @@ export function NavDocuments({
   items: {
     name: string;
     url: string;
-    icon: Icon;
+    icon: any;
   }[];
 }) {
-  const { isMobile } = useSidebar();
-
-  // ⭐ Get role from Zustand (in-memory only)
+  const pathname = usePathname();   // ⭐ Get current URL
   const role = useAuthStore((state) => state.role);
 
   // ❌ If role is not admin, DON'T render
@@ -39,17 +30,26 @@ export function NavDocuments({
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Admin Menu</SidebarGroupLabel>
+
       <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild>
-              <a href={item.url}>
-                <item.icon />
-                <span>{item.name}</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
+        {items.map((item) => {
+          // ⭐ Highlight if the current route is active
+          const isActive = pathname === item.url;
+
+          return (
+            <SidebarMenuItem key={item.name}>
+              <SidebarMenuButton 
+                isActive={isActive}   // ⭐ IMPORTANT
+                asChild
+              >
+                <a href={item.url}>
+                  <item.icon />
+                  <span>{item.name}</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

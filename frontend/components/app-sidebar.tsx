@@ -113,17 +113,17 @@ const data = {
   documents: [
     {
       name: "Parking Lots Managment",
-      url: "dashboard/lotManagement",
+      url: "/dashboard/lotManagement",
       icon: IconDatabase,
     },
     {
       name: "User Logs",
-      url: "#",
+      url: "/dashboard/userLogs",
       icon: IconReport,
     },
     {
       name: "Review Managment",
-      url: "#",
+      url: "/dashboard/reviewsManagement",
       icon: IconFileWord,
     },
   ],
