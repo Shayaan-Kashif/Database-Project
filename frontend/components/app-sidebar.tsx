@@ -113,7 +113,7 @@ const data = {
   documents: [
     {
       name: "Parking Lots Managment",
-      url: "#",
+      url: "dashboard/lotManagement",
       icon: IconDatabase,
     },
     {
