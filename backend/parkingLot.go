@@ -69,8 +69,16 @@ func (cfg *apiConfig) createParkingLot(res http.ResponseWriter, req *http.Reques
 	})
 
 	if err != nil {
+
+		hasPgErr, message := handlePgConstraints(err)
+		if hasPgErr {
+			respondWithError(res, http.StatusBadRequest, message)
+			return
+		}
+
 		respondWithError(res, http.StatusInternalServerError, err.Error())
 		return
+
 	}
 
 	responseStruct := struct {
