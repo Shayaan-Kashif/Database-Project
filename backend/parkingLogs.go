@@ -260,6 +260,8 @@ func (cfg *apiConfig) getParkingHistory(res http.ResponseWriter, req *http.Reque
 				Date:    u.Time.Format("2006-01-02"),
 				Entries: 1,
 			})
+
+			lastDate = u.Time.Format("2006-01-02")
 		}
 	}
 

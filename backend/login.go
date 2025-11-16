@@ -218,7 +218,8 @@ func (cfg *apiConfig) refresh(res http.ResponseWriter, req *http.Request) {
 
 	respondWithJSON(res, http.StatusOK, struct {
 		AccessToken string `json:"access_token"`
-	}{AccessToken: JWT})
+		Role        string `json:"role"`
+	}{AccessToken: JWT, Role: dbToken.Role})
 
 }
 
