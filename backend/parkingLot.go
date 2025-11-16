@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
@@ -106,7 +107,11 @@ func (cfg *apiConfig) getParkingLotFromID(res http.ResponseWriter, req *http.Req
 
 	parkingLotDB, err := cfg.dbQueries.GetParkingLotFromID(req.Context(), lotID)
 
+	if err == sql.ErrNoRows {
+		respondWithError(res, http.StatusBadRequest, "No lot for this uuid")
+	}
 	if err != nil {
+
 		respondWithError(res, http.StatusInternalServerError, err.Error())
 		return
 	}
