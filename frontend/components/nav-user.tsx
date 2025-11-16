@@ -47,7 +47,8 @@ export function NavUser({
     logout()
   }
 
-     const { name, role } = useAuthStore();
+  const name = useAuthStore((state) => state.name);
+  const role = useAuthStore((state) => state.role);
 
   return (
     <SidebarMenu>

@@ -19,6 +19,7 @@ import data from "./data.json"
 export default function Page() {
   // ⭐ Only subscribe to token, not the whole store
   const token = useAuthStore((state) => state.token);
+  const role = useAuthStore((state) => state.role);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,7 +34,12 @@ export default function Page() {
     };
 
     checkAuth();
-  }, [token, router]);
+  }, [token, router, role]);
+
+
+  console.log("Store token:", token);
+  console.log("Store role:", role);
+
 
   return (
     <SidebarProvider

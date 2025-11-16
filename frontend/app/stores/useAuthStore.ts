@@ -6,40 +6,58 @@ type AuthState = {
   token: string | null;
   name: string | null;
   role: string | null;
-  setAuth: (data: { token: string | null; name: string | null; role: string | null }) => void;
+
+  setAuth: (data: Partial<AuthState>) => void;
   setToken: (token: string | null) => void;
+  setRole: (role: string | null) => void;
+
   clearAuth: () => void;
 };
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   name: null,
   role: null,
 
-  setAuth: ({ token, name, role }) => {
-    set({ token, name, role });
-    sessionStorage.setItem("name", name ?? "");
-    sessionStorage.setItem("role", role ?? "");
-  },
+  // ⭐ merge updates, and sync name to sessionStorage
+  setAuth: (data) =>
+    set((state) => {
+      if (data.name !== undefined) {
+        sessionStorage.setItem("name", data.name ?? "");
+      }
+      // role stays in memory only
+      return { ...state, ...data };
+    }),
 
-  setToken: (token) => set({ token }),
+  setToken: (token) =>
+    set((state) => ({
+      ...state,
+      token,
+    })),
+
+  setRole: (role) =>
+    set((state) => ({
+      ...state,
+      role,
+    })),
 
   clearAuth: () => {
     sessionStorage.removeItem("name");
-    sessionStorage.removeItem("role");
-    set({ token: null, name: null, role: null });
+    set({
+      token: null,
+      name: null,
+      role: null,
+    });
   },
 }));
 
-// restore session data
+// ⭐ Restore name from sessionStorage on page load
 if (typeof window !== "undefined") {
   const storedName = sessionStorage.getItem("name");
-  const storedRole = sessionStorage.getItem("role");
 
-  if (storedName || storedRole) {
+  if (storedName) {
     useAuthStore.setState({
-      name: storedName ?? null,
-      role: storedRole ?? null,
+      name: storedName,
     });
   }
 }

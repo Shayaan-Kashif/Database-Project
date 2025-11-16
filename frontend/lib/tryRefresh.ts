@@ -8,18 +8,20 @@ export async function tryRefresh() {
   try {
     const res = await fetch("http://localhost:8080/api/refresh", {
       method: "POST",
-      credentials: "include", // sends the HttpOnly refresh cookie
+      credentials: "include",
     });
 
     if (!res.ok) return false;
 
     const data = await res.json();
 
-    // Update only the token in Zustand
+    // ⭐ Update both values
     useAuthStore.getState().setToken(data.access_token);
+    useAuthStore.getState().setRole(data.role);
 
     return true;
-  } catch (err) {
+  } catch {
     return false;
   }
 }
+
