@@ -66,6 +66,7 @@ func main() {
 	serverMux.Handle("POST /api/parkingLots", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.createParkingLot)))
 	serverMux.Handle("POST /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.CreateReview)))
 	serverMux.Handle("PATCH /api/reviews/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.ModifyReview)))
+	serverMux.Handle("DELETE /api/reviews", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.DeleteReview)))
 	serverMux.HandleFunc("GET /api/reviews/{lotID}", apiConfig.getReviewsFromLotID)
 	serverMux.HandleFunc("GET /api/topRatedLots", apiConfig.getTopRatedLots)
 	serverMux.Handle("GET /api/avgTimeParked", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAvgTimeParkedFromUserID)))
