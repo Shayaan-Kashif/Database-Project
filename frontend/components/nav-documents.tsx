@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import {
   IconDots,
   IconFolder,
@@ -19,6 +17,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { useAuthStore } from "@/app/stores/useAuthStore";
+
 export function NavDocuments({
   items,
 }: {
@@ -30,13 +30,8 @@ export function NavDocuments({
 }) {
   const { isMobile } = useSidebar();
 
-  const [role, setRole] = useState<string | null>(null);
-
-  // 🔥 Read sessionStorage only on client (safe)
-  useEffect(() => {
-    const storedRole = sessionStorage.getItem("role");
-    setRole(storedRole);
-  }, []);
+  // ⭐ Get role from Zustand (in-memory only)
+  const role = useAuthStore((state) => state.role);
 
   // ❌ If role is not admin, DON'T render
   if (role !== "admin") return null;
