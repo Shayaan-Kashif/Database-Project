@@ -14,7 +14,9 @@ import {
   IconLoader,
   IconPlus,
   IconTrendingUp,
+  IconTrendingDown
 } from "@tabler/icons-react"
+
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -30,11 +32,11 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { toast } from "sonner"
-import { z } from "zod"
 
+import { z } from "zod"
+import { toast } from "sonner"
 import { useIsMobile } from "@/hooks/use-mobile"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -80,13 +82,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+// -----------------------------
+// ZOD SCHEMA
+// -----------------------------
 export const schema = z.object({
   id: z.number(),
   header: z.string(),
@@ -97,7 +97,9 @@ export const schema = z.object({
   reviewer: z.string(),
 })
 
-// Create a separate component for the drag handle (now just a static icon)
+// -----------------------------
+// DRAG HANDLE
+// -----------------------------
 function DragHandle({ id: _id }: { id: number }) {
   return (
     <Button
@@ -111,6 +113,9 @@ function DragHandle({ id: _id }: { id: number }) {
   )
 }
 
+// -----------------------------
+// TABLE COLUMNS
+// -----------------------------
 const columns: ColumnDef<z.infer<typeof schema>>[] = [
   {
     id: "drag",
@@ -127,7 +132,6 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
             (table.getIsSomePageRowsSelected() && "indeterminate")
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
         />
       </div>
     ),
@@ -136,30 +140,22 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
         />
       </div>
     ),
-    enableSorting: false,
-    enableHiding: false,
   },
   {
     accessorKey: "header",
     header: "Header",
-    cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />
-    },
-    enableHiding: false,
+    cell: ({ row }) => <TableCellViewer item={row.original} />,
   },
   {
     accessorKey: "type",
     header: "Section Type",
     cell: ({ row }) => (
-      <div className="w-32">
-        <Badge variant="outline" className="text-muted-foreground px-1.5">
-          {row.original.type}
-        </Badge>
-      </div>
+      <Badge variant="outline" className="text-muted-foreground px-1.5">
+        {row.original.type}
+      </Badge>
     ),
   },
   {
@@ -168,7 +164,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     cell: ({ row }) => (
       <Badge variant="outline" className="text-muted-foreground px-1.5">
         {row.original.status === "Done" ? (
-          <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
+          <IconCircleCheckFilled className="fill-green-500" />
         ) : (
           <IconLoader />
         )}
@@ -178,106 +174,41 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   },
   {
     accessorKey: "target",
-    header: () => <div className="w-full text-right">Target</div>,
+    header: () => <div className="text-right">Target</div>,
     cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-target`} className="sr-only">
-          Target
-        </Label>
-        <Input
-          className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.target}
-          id={`${row.original.id}-target`}
-        />
-      </form>
+      <Input
+        defaultValue={row.original.target}
+        className="h-8 w-16 bg-transparent text-right"
+      />
     ),
   },
   {
     accessorKey: "limit",
-    header: () => <div className="w-full text-right">Limit</div>,
+    header: () => <div className="text-right">Limit</div>,
     cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-          Limit
-        </Label>
-        <Input
-          className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.limit}
-          id={`${row.original.id}-limit`}
-        />
-      </form>
+      <Input
+        defaultValue={row.original.limit}
+        className="h-8 w-16 bg-transparent text-right"
+      />
     ),
   },
   {
     accessorKey: "reviewer",
     header: "Reviewer",
-    cell: ({ row }) => {
-      const isAssigned = row.original.reviewer !== "Assign reviewer"
-
-      if (isAssigned) {
-        return row.original.reviewer
-      }
-
-      return (
-        <>
-          <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-            Reviewer
-          </Label>
-          <Select>
-            <SelectTrigger
-              className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-              size="sm"
-              id={`${row.original.id}-reviewer`}
-            >
-              <SelectValue placeholder="Assign reviewer" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-              <SelectItem value="Jamik Tashpulatov">
-                Jamik Tashpulatov
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </>
-      )
-    },
+    cell: ({ row }) => row.original.reviewer,
   },
   {
     id: "actions",
     cell: () => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          >
+          <Button variant="ghost" size="icon" className="size-8">
             <IconDotsVertical />
-            <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-32">
           <DropdownMenuItem>Edit</DropdownMenuItem>
           <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
         </DropdownMenuContent>
@@ -286,12 +217,12 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   },
 ]
 
-function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
+// -----------------------------
+// DRAGGABLE ROW
+// -----------------------------
+function DraggableRow({ row }: { row: Row<any> }) {
   return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      className="relative z-0"
-    >
+    <TableRow data-state={row.getIsSelected() && "selected"}>
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -301,143 +232,134 @@ function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
   )
 }
 
-type Lot = Record<string, unknown>
+// -----------------------------
+// LOT HELPERS
+// -----------------------------
+type Lot = Record<string, any>
 
-function getLotName(lot: Lot): string {
-  if (typeof lot.name === "string" && lot.name.length > 0) return lot.name
-  if (typeof (lot as any).lot_name === "string" && (lot as any).lot_name.length > 0)
-    return (lot as any).lot_name
-  return "Parking Lot"
+function getLotName(lot: Lot) {
+  return lot.name ?? lot.lot_name ?? "Parking Lot"
+}
+function getLotRating(lot: Lot) {
+  const n = Number(lot.avgScore)
+  return Number.isFinite(n) ? n : null
+}
+function getLotCapacity(lot: Lot) {
+  const n = Number(lot.slots)
+  return Number.isFinite(n) ? n : null
 }
 
-function getLotRating(lot: Lot): number | null {
-  const avg = (lot as any).avgScore;
-  const num = typeof avg === "number" ? avg : Number(avg)
-  return Number.isFinite(num) ? num : null
-}
-
-function getLotCapacity(lot: Lot): number | null {
-  const cap = (lot as any).slots;
-  const num = typeof cap === "number" ? cap : Number(cap)
-  return Number.isFinite(num) ? num : null
-}
-
-export function DataTable({
-  data: initialData,
-}: {
-  data: z.infer<typeof schema>[]
-}) {
+// -----------------------------
+// MAIN COMPONENT
+// -----------------------------
+export function DataTable({ data: initialData }: { data: any[] }) {
+  const isMobile = useIsMobile()
   const data = initialData
+
   const [activeTab, setActiveTab] = React.useState<
     "outline" | "top-rated-lots" | "full-lots" | "available-lots"
   >("outline")
+
   const [topRatedLots, setTopRatedLots] = React.useState<Lot[]>([])
   const [fullLots, setFullLots] = React.useState<Lot[]>([])
-   const [availableLots, setAvailableLots] = React.useState<Lot[]>([])
+  const [availableLots, setAvailableLots] = React.useState<Lot[]>([])
+
   const [loadingTopRated, setLoadingTopRated] = React.useState(false)
   const [loadingFullLots, setLoadingFullLots] = React.useState(false)
   const [loadingAvailableLots, setLoadingAvailableLots] = React.useState(false)
+
   const [errorTopRated, setErrorTopRated] = React.useState<string | null>(null)
   const [errorFullLots, setErrorFullLots] = React.useState<string | null>(null)
-  const [errorAvailableLots, setErrorAvailableLots] = React.useState<string | null>(null)
-  const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 10,
-  })
+  const [errorAvailableLots, setErrorAvailableLots] =
+    React.useState<string | null>(null)
+
+  // -----------------------------
+  // FETCHES
+  // -----------------------------
   React.useEffect(() => {
-    async function fetchTopRatedLots() {
+    async function fetchTopRated() {
       try {
         setLoadingTopRated(true)
-        setErrorTopRated(null)
         const res = await fetch("http://localhost:8080/api/topRatedLots", {
           credentials: "include",
         })
-        if (!res.ok) {
-          throw new Error(`Request failed with status ${res.status}`)
-        }
         const json = await res.json()
-        setTopRatedLots(Array.isArray(json) ? json : [])
+        setTopRatedLots(json)
       } catch (err) {
-        setErrorTopRated((err as Error).message)
+        setErrorTopRated(String(err))
       } finally {
         setLoadingTopRated(false)
       }
     }
 
-    async function fetchFullLots() {
+    async function fetchFull() {
       try {
         setLoadingFullLots(true)
-        setErrorFullLots(null)
         const res = await fetch("http://localhost:8080/api/fullLots", {
           credentials: "include",
         })
-        if (!res.ok) {
-          throw new Error(`Request failed with status ${res.status}`)
-        }
         const json = await res.json()
-        setFullLots(Array.isArray(json) ? json : [])
+        setFullLots(json)
       } catch (err) {
-        setErrorFullLots((err as Error).message)
+        setErrorFullLots(String(err))
       } finally {
         setLoadingFullLots(false)
       }
     }
 
-
-    async function fetchAvailableLots() {
+    async function fetchAvailable() {
       try {
-        setLoadingFullLots(true)
-        setErrorFullLots(null)
+        setLoadingAvailableLots(true)
         const res = await fetch("http://localhost:8080/api/parkingLots", {
           credentials: "include",
         })
-        if (!res.ok) {
-          throw new Error(`Request failed with status ${res.status}`)
-        }
         const json = await res.json()
 
-        const processed = json.map((lot: any) => ({
+        const withAvailable = json.map((lot: any) => ({
           ...lot,
           available: Number(lot.slots) - Number(lot.ocupiedSlots),
         }))
 
-        const availableLots = processed.filter((lot: any) => lot.available > 0)
-        setAvailableLots(Array.isArray(availableLots) ? availableLots : [])
+        const filtered = withAvailable.filter((lot: any) => lot.available > 0)
+        setAvailableLots(filtered)
       } catch (err) {
-        setErrorAvailableLots((err as Error).message)
+        setErrorAvailableLots(String(err))
       } finally {
         setLoadingAvailableLots(false)
       }
     }
 
-    if (activeTab === "top-rated-lots" && topRatedLots.length === 0 && !loadingTopRated) {
-      fetchTopRatedLots()
-    }
+    if (activeTab === "top-rated-lots" && topRatedLots.length === 0)
+      fetchTopRated()
 
-      if (activeTab === "full-lots" && fullLots.length === 0 && !loadingFullLots) {
-        fetchFullLots()
-      }
-      
-      if (activeTab === "available-lots" && availableLots.length === 0 && !loadingAvailableLots) {
-        fetchAvailableLots()
-      }
-  }, [activeTab, fullLots.length, loadingFullLots, loadingTopRated, topRatedLots.length, availableLots.length, loadingAvailableLots])
+    if (activeTab === "full-lots" && fullLots.length === 0)
+      fetchFull()
+
+    if (activeTab === "available-lots" && availableLots.length === 0)
+      fetchAvailable()
+  }, [activeTab])
+
+  // -----------------------------
+  // TABLE INSTANCE
+  // -----------------------------
+  const [rowSelection, setRowSelection] = React.useState({})
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({})
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const table = useReactTable({
     data,
     columns,
     state: {
       sorting,
+      columnFilters,
       columnVisibility,
       rowSelection,
-      columnFilters,
       pagination,
     },
     getRowId: (row) => row.id.toString(),
@@ -448,38 +370,30 @@ export function DataTable({
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
+  // -----------------------------
+  // UI: TABS WRAPPER (FIXED)
+  // -----------------------------
   return (
     <Tabs
       value={activeTab}
       onValueChange={(value) =>
-        setActiveTab(value as "outline" | "top-rated-lots" | "full-lots")
+        setActiveTab(
+          value as "outline" | "top-rated-lots" | "full-lots" | "available-lots"
+        )
       }
-      className="w-full flex-col justify-start gap-6"
+      className="w-full flex-col gap-6"
     >
+      {/* -------------------- HEADER -------------------- */}
       <div className="flex items-center justify-between px-4 lg:px-6">
-        <Label htmlFor="view-selector" className="sr-only">
-          View
-        </Label>
-        <Select
-          value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(
-              value as "outline" | "top-rated-lots" | "full-lots" | "available-lots"
-            )
-          }
-        >
-          <SelectTrigger
-            className="flex w-fit @4xl/main:hidden"
-            size="sm"
-            id="view-selector"
-          >
+        <Select value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <SelectTrigger size="sm" className="w-fit @4xl/main:hidden">
             <SelectValue placeholder="Select a view" />
           </SelectTrigger>
           <SelectContent>
@@ -489,195 +403,60 @@ export function DataTable({
             <SelectItem value="available-lots">Available Lots</SelectItem>
           </SelectContent>
         </Select>
-        <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
+
+        <TabsList className="hidden @4xl/main:flex">
           <TabsTrigger value="outline">Outline</TabsTrigger>
-          <TabsTrigger value="top-rated-lots">
-            Top Rated Lots 
-          </TabsTrigger>
-          <TabsTrigger value="full-lots">
-            Full Lots 
-          </TabsTrigger>
-          <TabsTrigger value="available-lots">
-            Available Lots 
-          </TabsTrigger>
+          <TabsTrigger value="top-rated-lots">Top Rated Lots</TabsTrigger>
+          <TabsTrigger value="full-lots">Full Lots</TabsTrigger>
+          <TabsTrigger value="available-lots">Available Lots</TabsTrigger>
         </TabsList>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <IconLayoutColumns />
-                <span className="hidden lg:inline">Customize Columns</span>
-                <span className="lg:hidden">Columns</span>
-                <IconChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" &&
-                    column.getCanHide()
-                )
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <IconPlus />
-            <span className="hidden lg:inline">Add Section</span>
-          </Button>
-        </div>
       </div>
+
+      {/* -------------------------------------------------- */}
+      {/* OUTLINE TAB */}
       <TabsContent
         value="outline"
-        className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
+        className="relative flex flex-col gap-4 px-4 lg:px-6"
       >
         <div className="overflow-hidden rounded-lg border">
           <Table>
             <TableHeader className="bg-muted sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
                 </TableRow>
               ))}
             </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
+
+            <TableBody>
+              {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
                   <DraggableRow key={row.id} row={row} />
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    No results.
-                  </TableCell>
+                  <TableCell colSpan={columns.length}>No results.</TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-between px-4">
-          <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
-          </div>
-          <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="rows-per-page" className="text-sm font-medium">
-                Rows per page
-              </Label>
-              <Select
-                value={`${table.getState().pagination.pageSize}`}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value))
-                }}
-              >
-                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                  <SelectValue
-                    placeholder={table.getState().pagination.pageSize}
-                  />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 30, 40, 50].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
-            </div>
-            <div className="ml-auto flex items-center gap-2 lg:ml-0">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to first page</span>
-                <IconChevronsLeft />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to previous page</span>
-                <IconChevronLeft />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to next page</span>
-                <IconChevronRight />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden size-8 lg:flex"
-                size="icon"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to last page</span>
-                <IconChevronsRight />
-              </Button>
-            </div>
-          </div>
-        </div>
       </TabsContent>
-      <TabsContent
-        value="top-rated-lots"
-        className="flex flex-col gap-4 px-4 lg:px-6"
-      >
-        {loadingTopRated && (
-          <div className="text-muted-foreground text-sm">Loading top rated lots...</div>
-        )}
-        {errorTopRated && !loadingTopRated && (
-          <div className="text-destructive text-sm">
-            Failed to load top rated lots: {errorTopRated}
-          </div>
-        )}
+
+      {/* -------------------------------------------------- */}
+      {/* TOP RATED LOTS */}
+      <TabsContent value="top-rated-lots" className="px-4 lg:px-6">
+        {loadingTopRated && <div>Loading top rated lots...</div>}
+        {errorTopRated && <div className="text-destructive">{errorTopRated}</div>}
+
         {!loadingTopRated && !errorTopRated && topRatedLots.length === 0 && (
-          <div className="text-muted-foreground text-sm">
-            No top rated lots found.
-          </div>
+          <div>No top rated lots found.</div>
         )}
+
         {!loadingTopRated && !errorTopRated && topRatedLots.length > 0 && (
           <div className="overflow-hidden rounded-lg border">
             <Table>
@@ -688,36 +467,28 @@ export function DataTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {[...topRatedLots]
-                  .sort((a, b) => (getLotRating(b) ?? 0) - (getLotRating(a) ?? 0))
-                  .map((lot, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{getLotName(lot)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {getLotRating(lot) ?? "N/A"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                {topRatedLots.map((lot, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{getLotName(lot)}</TableCell>
+                    <TableCell>{getLotRating(lot) ?? "N/A"}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
         )}
       </TabsContent>
-      <TabsContent
-        value="full-lots"
-        className="flex flex-col gap-4 px-4 lg:px-6"
-      >
-        {loadingFullLots && (
-          <div className="text-muted-foreground text-sm">Loading full lots...</div>
-        )}
-        {errorFullLots && !loadingFullLots && (
-          <div className="text-destructive text-sm">
-            Failed to load full lots: {errorFullLots}
-          </div>
-        )}
+
+      {/* -------------------------------------------------- */}
+      {/* FULL LOTS */}
+      <TabsContent value="full-lots" className="px-4 lg:px-6">
+        {loadingFullLots && <div>Loading full lots...</div>}
+        {errorFullLots && <div className="text-destructive">{errorFullLots}</div>}
+
         {!loadingFullLots && !errorFullLots && fullLots.length === 0 && (
-          <div className="text-muted-foreground text-sm">No full lots found.</div>
+          <div>No full lots found.</div>
         )}
+
         {!loadingFullLots && !errorFullLots && fullLots.length > 0 && (
           <div className="overflow-hidden rounded-lg border">
             <Table>
@@ -727,249 +498,96 @@ export function DataTable({
                   <TableHead>Capacity</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {[...fullLots]
-                  .sort((a, b) => (getLotCapacity(b) ?? 0) - (getLotCapacity(a) ?? 0))
-                  .map((lot, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{getLotName(lot)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {getLotCapacity(lot) ?? "N/A"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                {fullLots.map((lot, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{getLotName(lot)}</TableCell>
+                    <TableCell>{getLotCapacity(lot)}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
         )}
       </TabsContent>
-        <TabsContent
-  value="available-lots"
-  className="flex flex-col gap-4 px-4 lg:px-6"
->
-  {loadingAvailableLots && (
-    <div className="text-muted-foreground text-sm">Loading available lots...</div>
-  )}
 
-  {errorAvailableLots && !loadingAvailableLots && (
-    <div className="text-destructive text-sm">
-      Failed to load available lots: {errorAvailableLots}
-    </div>
-  )}
+      {/* -------------------------------------------------- */}
+      {/* AVAILABLE LOTS */}
+      <TabsContent value="available-lots" className="px-4 lg:px-6">
+        {loadingAvailableLots && <div>Loading available lots...</div>}
+        {errorAvailableLots && (
+          <div className="text-destructive">{errorAvailableLots}</div>
+        )}
 
-  {!loadingAvailableLots && !errorAvailableLots && availableLots.length === 0 && (
-    <div className="text-muted-foreground text-sm">
-      No available lots found.
-    </div>
-  )}
+        {!loadingAvailableLots &&
+          !errorAvailableLots &&
+          availableLots.length === 0 && <div>No available lots found.</div>}
 
-  {!loadingAvailableLots && !errorAvailableLots && availableLots.length > 0 && (
-    <div className="overflow-hidden rounded-lg border">
-      <Table>
-        <TableHeader className="bg-muted sticky top-0 z-10">
-          <TableRow>
-            <TableHead>Lot</TableHead>
-            <TableHead>Available</TableHead>
-            <TableHead>Total Slots</TableHead>
-            <TableHead>Occupied</TableHead>
-          </TableRow>
-        </TableHeader>
+        {!loadingAvailableLots &&
+          !errorAvailableLots &&
+          availableLots.length > 0 && (
+            <div className="overflow-hidden rounded-lg border">
+              <Table>
+                <TableHeader className="bg-muted sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead>Lot</TableHead>
+                    <TableHead>Available</TableHead>
+                    <TableHead>Total Slots</TableHead>
+                    <TableHead>Occupied</TableHead>
+                  </TableRow>
+                </TableHeader>
 
-        <TableBody>
-          {[...availableLots]
-            .sort((a, b) => (b.available ?? 0) - (a.available ?? 0))
-            .map((lot: any, index: number) => (
-              <TableRow key={index}>
-                <TableCell className="font-medium">{lot.name}</TableCell>
-                <TableCell>{lot.available}</TableCell>
-                <TableCell>{lot.slots}</TableCell>
-                <TableCell>{lot.ocupiedSlots}</TableCell>
-              </TableRow>
-            ))}
-        </TableBody>
-      </Table>
-    </div>
-  )}
-</TabsContent>
-
-
-
-
-
+                <TableBody>
+                  {availableLots
+                    .sort((a, b) => b.available - a.available)
+                    .map((lot: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell>{lot.name}</TableCell>
+                        <TableCell>{lot.available}</TableCell>
+                        <TableCell>{lot.slots}</TableCell>
+                        <TableCell>{lot.ocupiedSlots}</TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+      </TabsContent>
     </Tabs>
   )
 }
 
-const chartData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
-  { month: "March", desktop: 237, mobile: 120 },
-  { month: "April", desktop: 73, mobile: 190 },
-  { month: "May", desktop: 209, mobile: 130 },
-  { month: "June", desktop: 214, mobile: 140 },
-]
-
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--primary)",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig
-
+// -----------------------------
+// Drawer Viewer Component
+// -----------------------------
 function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
   const isMobile = useIsMobile()
 
   return (
     <Drawer direction={isMobile ? "bottom" : "right"}>
       <DrawerTrigger asChild>
-        <Button variant="link" className="text-foreground w-fit px-0 text-left">
+        <Button variant="link" className="text-foreground px-0">
           {item.header}
         </Button>
       </DrawerTrigger>
+
       <DrawerContent>
-        <DrawerHeader className="gap-1">
+        <DrawerHeader>
           <DrawerTitle>{item.header}</DrawerTitle>
-          <DrawerDescription>
-            Showing total visitors for the last 6 months
-          </DrawerDescription>
+          <DrawerDescription>Showing visitors trend</DrawerDescription>
         </DrawerHeader>
-        <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-          {!isMobile && (
-            <>
-              <ChartContainer config={chartConfig}>
-                <AreaChart
-                  accessibilityLayer
-                  data={chartData}
-                  margin={{
-                    left: 0,
-                    right: 10,
-                  }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                    hide
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="dot" />}
-                  />
-                  <Area
-                    dataKey="mobile"
-                    type="natural"
-                    fill="var(--color-mobile)"
-                    fillOpacity={0.6}
-                    stroke="var(--color-mobile)"
-                    stackId="a"
-                  />
-                  <Area
-                    dataKey="desktop"
-                    type="natural"
-                    fill="var(--color-desktop)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-desktop)"
-                    stackId="a"
-                  />
-                </AreaChart>
-              </ChartContainer>
-              <Separator />
-              <div className="grid gap-2">
-                <div className="flex gap-2 leading-none font-medium">
-                  Trending up by 5.2% this month{" "}
-                  <IconTrendingUp className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  Showing total visitors for the last 6 months. This is just
-                  some random text to test the layout. It spans multiple lines
-                  and should wrap around.
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
-          <form className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="header">Header</Label>
-              <Input id="header" defaultValue={item.header} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="type">Type</Label>
-                <Select defaultValue={item.type}>
-                  <SelectTrigger id="type" className="w-full">
-                    <SelectValue placeholder="Select a type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Table of Contents">
-                      Table of Contents
-                    </SelectItem>
-                    <SelectItem value="Executive Summary">
-                      Executive Summary
-                    </SelectItem>
-                    <SelectItem value="Technical Approach">
-                      Technical Approach
-                    </SelectItem>
-                    <SelectItem value="Design">Design</SelectItem>
-                    <SelectItem value="Capabilities">Capabilities</SelectItem>
-                    <SelectItem value="Focus Documents">
-                      Focus Documents
-                    </SelectItem>
-                    <SelectItem value="Narrative">Narrative</SelectItem>
-                    <SelectItem value="Cover Page">Cover Page</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="status">Status</Label>
-                <Select defaultValue={item.status}>
-                  <SelectTrigger id="status" className="w-full">
-                    <SelectValue placeholder="Select a status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Done">Done</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Not Started">Not Started</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="target">Target</Label>
-                <Input id="target" defaultValue={item.target} />
-              </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="limit">Limit</Label>
-                <Input id="limit" defaultValue={item.limit} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="reviewer">Reviewer</Label>
-              <Select defaultValue={item.reviewer}>
-                <SelectTrigger id="reviewer" className="w-full">
-                  <SelectValue placeholder="Select a reviewer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-                  <SelectItem value="Jamik Tashpulatov">
-                    Jamik Tashpulatov
-                  </SelectItem>
-                  <SelectItem value="Emily Whalen">Emily Whalen</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
+        <div className="px-4 pb-6 text-sm">
+          <Separator />
+          <form className="flex flex-col gap-4 mt-4">
+            <Label>Header</Label>
+            <Input defaultValue={item.header} />
           </form>
         </div>
+
         <DrawerFooter>
-          <Button>Submit</Button>
+          <Button>Save</Button>
           <DrawerClose asChild>
             <Button variant="outline">Done</Button>
           </DrawerClose>
