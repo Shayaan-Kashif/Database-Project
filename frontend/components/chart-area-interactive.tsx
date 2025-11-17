@@ -30,6 +30,9 @@ import {
 
 import { useAuthStore } from "@/app/stores/useAuthStore";
 
+// ----------------------------
+// LOTS AVAILABLE
+// ----------------------------
 const lots = [
   { id: "f51d8400-a620-4167-af9a-eca19e564919", name: "Founders 1" },
   { id: "ee871905-7ee7-45d2-97de-fcecb181f53a", name: "Founders 2" },
@@ -39,11 +42,16 @@ const lots = [
   { id: "3cb5c1f0-40ea-4aad-b265-3af01fc1e9b4", name: "Commencement" },
 ];
 
+// ----------------------------
+// CHART CONFIG
+// ----------------------------
 const chartConfig = {
-  desktop: { label: "Desktop", color: "var(--primary)" },
-  mobile: { label: "Mobile", color: "var(--primary)" },
+  entries: { label: "Entries", color: "var(--primary)" },
 } satisfies ChartConfig;
 
+// ----------------------------
+// MAIN COMPONENT
+// ----------------------------
 export function ChartAreaInteractive() {
   const isMobile = useIsMobile();
   const token = useAuthStore((s) => s.token);
@@ -53,12 +61,11 @@ export function ChartAreaInteractive() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Track if first load so we delay only once
   const firstLoad = React.useRef(true);
 
-  // -----------------------------------
-  // FETCH FUNCTION
-  // -----------------------------------
+  // ----------------------------
+  // FETCH FUNCTION (single-line graph)
+  // ----------------------------
   async function fetchHistory(lotID: string, authToken: string) {
     setLoading(true);
     setError(null);
@@ -77,7 +84,14 @@ export function ChartAreaInteractive() {
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
 
       const json = await res.json();
-      setHistory(Array.isArray(json) ? json : []);
+
+      // Expected shape: [{ date: "YYYY-MM-DD", entries: 3 }]
+      const normalized = json.map((row: any) => ({
+        date: row.date,
+        entries: row.entries,
+      }));
+
+      setHistory(normalized);
     } catch (err) {
       setError(String(err));
       setHistory([]);
@@ -86,14 +100,13 @@ export function ChartAreaInteractive() {
     }
   }
 
-  // -----------------------------------
-  // EFFECT – APPLY 500ms DELAY ONLY ON FIRST MOUNT
-  // -----------------------------------
+  // ----------------------------
+  // EFFECT – DELAY ONLY ON FIRST LOAD
+  // ----------------------------
   React.useEffect(() => {
     if (!token) return;
 
     async function run() {
-      // Delay only once
       if (firstLoad.current) {
         await new Promise((res) => setTimeout(res, 500));
         firstLoad.current = false;
@@ -105,14 +118,14 @@ export function ChartAreaInteractive() {
     run();
   }, [selectedLot, token]);
 
-  // -----------------------------------
+  // ----------------------------
   // RENDER
-  // -----------------------------------
+  // ----------------------------
   return (
     <Card className="@container/card">
       <CardHeader>
         <CardTitle>Parking Lot History</CardTitle>
-        <CardDescription>Select a parking lot to view history</CardDescription>
+        <CardDescription>Daily entry count for each lot</CardDescription>
 
         <CardAction>
           <Select value={selectedLot} onValueChange={setSelectedLot}>
@@ -139,7 +152,7 @@ export function ChartAreaInteractive() {
 
         {error && !loading && (
           <div className="text-destructive text-sm">
-            Failed to load history: {error}
+            Failed: {error}
           </div>
         )}
 
@@ -153,14 +166,9 @@ export function ChartAreaInteractive() {
           <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <AreaChart data={history}>
               <defs>
-                <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-desktop)" stopOpacity={1} />
-                  <stop offset="95%" stopColor="var(--color-desktop)" stopOpacity={0.1} />
-                </linearGradient>
-
-                <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-mobile)" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="var(--color-mobile)" stopOpacity={0.1} />
+                <linearGradient id="fillEntries" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-entries)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--color-entries)" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
 
@@ -170,8 +178,8 @@ export function ChartAreaInteractive() {
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                tickMargin={8}
                 minTickGap={32}
+                tickMargin={8}
                 tickFormatter={(value) =>
                   new Date(value).toLocaleDateString("en-US", {
                     month: "short",
@@ -184,30 +192,24 @@ export function ChartAreaInteractive() {
                 cursor={false}
                 content={
                   <ChartTooltipContent
+                    indicator="dot"
                     labelFormatter={(value) =>
                       new Date(value).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                       })
                     }
-                    indicator="dot"
                   />
                 }
               />
 
               <Area
-                dataKey="mobile"
-                type="natural"
-                fill="url(#fillMobile)"
-                stroke="var(--color-mobile)"
-                stackId="a"
-              />
-              <Area
-                dataKey="desktop"
-                type="natural"
-                fill="url(#fillDesktop)"
-                stroke="var(--color-desktop)"
-                stackId="a"
+                dataKey="entries"   // 👈 FIXED
+                type="monotone"
+                fill="url(#fillEntries)"
+                stroke="var(--color-entries)"
+                dot={{ r: 4 }}       // 👈 shows single points
+                strokeWidth={2}
               />
             </AreaChart>
           </ChartContainer>
