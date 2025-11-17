@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/app/stores/useAuthStore";
 
-// Correct type for parking lots API
+// Parking Lots
 type ParkingLot = {
   id: string;
   name: string;
@@ -30,7 +30,7 @@ type ParkingLot = {
   ocupiedSlots: number;
 };
 
-// Correct type for parking logs API
+// Parking Logs
 type ParkingLog = {
   id: string;
   userID: string;
@@ -70,7 +70,7 @@ export default function DataTableLotsAndLogs() {
   }, []);
 
   // -------------------------------
-  // LOAD PARKING LOGS (requires Bearer token)
+  // LOAD PARKING LOGS (sorted newest → oldest)
   // -------------------------------
   async function loadLogs() {
     setLoading(true);
@@ -84,10 +84,18 @@ export default function DataTableLotsAndLogs() {
         },
       });
 
-      const data = await res.json();
+      let data = await res.json();
 
-      if (Array.isArray(data)) setLogs(data);
-      else setLogs([]);
+      if (Array.isArray(data)) {
+        // ⭐ Sort by time DESC (latest first)
+        data.sort(
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+        );
+
+        setLogs(data);
+      } else {
+        setLogs([]);
+      }
     } catch (e) {
       console.error("Failed to load logs:", e);
       setLogs([]);
@@ -97,7 +105,7 @@ export default function DataTableLotsAndLogs() {
   }
 
   // -------------------------------
-  // Helper to show lot name
+  // Helper: lot name
   // -------------------------------
   function getLotName(id: string) {
     return lots.find((l) => l.id === id)?.name ?? "Unknown Lot";
@@ -108,7 +116,6 @@ export default function DataTableLotsAndLogs() {
   // -------------------------------
   return (
     <div className="p-4 flex flex-col gap-6">
-
       {/* MODE SELECT */}
       <div className="w-64">
         <Select
@@ -153,13 +160,14 @@ export default function DataTableLotsAndLogs() {
           </TableHeader>
 
           <TableBody>
+            {/* Loading */}
             {loading && (
               <TableRow>
                 <TableCell colSpan={10}>Loading…</TableCell>
               </TableRow>
             )}
 
-            {/* LOTS MODE */}
+            {/* LOTS TABLE */}
             {mode === "lots" &&
               !loading &&
               lots.map((lot) => {
@@ -186,7 +194,7 @@ export default function DataTableLotsAndLogs() {
                 );
               })}
 
-            {/* LOGS MODE */}
+            {/* LOGS TABLE (sorted) */}
             {mode === "logs" &&
               !loading &&
               logs.map((log) => (
