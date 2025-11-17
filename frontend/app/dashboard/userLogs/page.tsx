@@ -1,52 +1,43 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
-import { SectionCards } from "@/components/section-cards"
-import { SiteHeader } from "@/components/site-header"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { tryRefresh } from "@/lib/tryRefresh"
-import { useAuthStore } from "@/app/stores/useAuthStore"
+import DataTableUsers from "@/components/data-table-users";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { tryRefresh } from "@/lib/tryRefresh";
+import { useAuthStore } from "@/app/stores/useAuthStore";
 
 export default function Page() {
-  // ⭐ Only subscribe to token, not the whole store
-const token = useAuthStore((state) => state.token);
-const role = useAuthStore((state) => state.role);
-const router = useRouter();
+  const token = useAuthStore((state) => state.token);
+  const role = useAuthStore((state) => state.role);
+  const router = useRouter();
 
-useEffect(() => {
-  const checkAuth = async () => {
-    // 1️⃣ If no token, try refreshing
-    if (!token) {
-      const ok = await tryRefresh();
-      if (!ok) {
-        router.push("/login");
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!token) {
+        const ok = await tryRefresh();
+        if (!ok) {
+          router.push("/login");
+          return;
+        }
+      }
+
+      const currentRole = useAuthStore.getState().role;
+      if (currentRole !== "admin") {
+        router.push("/dashboard");
         return;
       }
-    }
+    };
 
-    // 2️⃣ After login OR refresh, check admin role
-    const currentRole = useAuthStore.getState().role;
-    if (currentRole !== "admin") {
-      router.push("/dashboard");
-      return;
-    }
-  };
+    checkAuth();
+  }, [token, role, router]);
 
-  checkAuth();
-}, [token, role, router]);
-
-console.log("Store token:", token);
-console.log("Store role:", role);
-
+  console.log("Store token:", token);
+  console.log("Store role:", role);
 
   return (
     <SidebarProvider
@@ -58,11 +49,12 @@ console.log("Store role:", role);
       }
     >
       <AppSidebar variant="inset" />
+
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
 
-
+        <div className="flex flex-1 flex-col p-6">
+          <DataTableUsers />
         </div>
       </SidebarInset>
     </SidebarProvider>
