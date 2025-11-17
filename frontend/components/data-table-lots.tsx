@@ -8,7 +8,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/components/ui/table";
 
 import {
@@ -16,162 +16,106 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/app/stores/useAuthStore";
 
-// ---------------------
-// Types
-// ---------------------
-
-// Review format (same as before)
-type Review = {
-  userID: string;
-  username: string;
-  lotID: string;
-  lotName: string;
-  title: string;
-  description: { String: string; Valid: boolean };
-  score: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-// Parking Lot names (ALL lots)
+// Correct type for parking lots API
 type ParkingLot = {
   id: string;
   name: string;
+  slots: number;
+  ocupiedSlots: number;
 };
 
-// Parking Log entries
+// Correct type for parking logs API
 type ParkingLog = {
   id: string;
-  lotID: string;
-  lotName: string;
-  timeEntered: string;
-  timeExited: string | null;
-  userID: string | null;
+  userID: string;
+  parkingLotID: string;
+  eventType: "entry" | "exit";
+  time: string;
 };
 
-// ---------------------
-// Component
-// ---------------------
 export default function DataTableLotsAndLogs() {
-  const [mode, setMode] = useState<string>("lots");  
-  // "lots" or "logs"
+  const [mode, setMode] = useState<"lots" | "logs">("lots");
 
   const [lots, setLots] = useState<ParkingLot[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [logs, setLogs] = useState<ParkingLog[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const token = useAuthStore((state) => state.token);
+  const token = useAuthStore((s) => s.token);
+  console.log("TOKEN:", token);
 
-  // ---------------------
-  // LOAD ALL PARKING LOTS
-  // ---------------------
+  // -------------------------------
+  // LOAD PARKING LOTS
+  // -------------------------------
   useEffect(() => {
     async function loadLots() {
       try {
         const res = await fetch("http://localhost:8080/api/parkingLots", {
           credentials: "include",
         });
-        const data = await res.json();
+
+        const data: ParkingLot[] = await res.json();
         setLots(data);
       } catch (e) {
-        console.error("Failed to load lots:", e);
+        console.error("Failed to load parking lots:", e);
       }
     }
+
     loadLots();
   }, []);
 
-  // ---------------------
-  // LOAD PARKING LOGS
-  // ---------------------
+  // -------------------------------
+  // LOAD PARKING LOGS (requires Bearer token)
+  // -------------------------------
   async function loadLogs() {
     setLoading(true);
 
     try {
       const res = await fetch("http://localhost:8080/api/parkingLogsAll", {
+        method: "GET",
         credentials: "include",
-      });
-      const data = await res.json();
-      setLogs(data);
-    } catch (e) {
-      console.error("Failed to load parking logs:", e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ---------------------
-  // LOAD REVIEWS (when lots mode)
-  // ---------------------
-  async function loadReviews(lotID: string) {
-    setLoading(true);
-
-    try {
-      const res = await fetch(
-        `http://localhost:8080/api/reviews/${lotID}`,
-        { credentials: "include" }
-      );
-      const data: Review[] = await res.json();
-      setReviews(data);
-    } catch (e) {
-      console.error("Failed to load reviews:", e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ---------------------
-  // DELETE Review
-  // ---------------------
-  async function deleteReview(userID: string, lotID: string) {
-    const ok = confirm("Are you sure?");
-    if (!ok) return;
-
-    try {
-      const res = await fetch("http://localhost:8080/api/reviews", {
-        method: "DELETE",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          userID,
-          lotID,
-        }),
       });
 
-      if (!res.ok) {
-        alert("Delete failed.");
-        return;
-      }
+      const data = await res.json();
 
-      loadReviews(lotID);
+      if (Array.isArray(data)) setLogs(data);
+      else setLogs([]);
     } catch (e) {
-      alert("Delete error.");
+      console.error("Failed to load logs:", e);
+      setLogs([]);
+    } finally {
+      setLoading(false);
     }
   }
 
-  // ---------------------
-  // RENDER
-  // ---------------------
+  // -------------------------------
+  // Helper to show lot name
+  // -------------------------------
+  function getLotName(id: string) {
+    return lots.find((l) => l.id === id)?.name ?? "Unknown Lot";
+  }
+
+  // -------------------------------
+  // RENDER UI
+  // -------------------------------
   return (
     <div className="p-4 flex flex-col gap-6">
 
-      {/* DROPDOWN */}
+      {/* MODE SELECT */}
       <div className="w-64">
         <Select
           value={mode}
-          onValueChange={(v) => {
+          onValueChange={(v: "lots" | "logs") => {
             setMode(v);
-            if (v === "logs") {
-              loadLogs();
-            }
+            if (v === "logs") loadLogs();
           }}
         >
           <SelectTrigger>
@@ -179,32 +123,30 @@ export default function DataTableLotsAndLogs() {
           </SelectTrigger>
 
           <SelectContent>
-            <SelectItem value="lots">All Lots (Reviews)</SelectItem>
+            <SelectItem value="lots">All Parking Lots</SelectItem>
             <SelectItem value="logs">Parking Logs</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* MAIN TABLE */}
-      <div className="overflow-x-auto rounded-lg border">
-        <Table className="text-sm [&_*]:px-3 [&_*]:py-1">
-          <TableHeader>
+      {/* TABLE */}
+      <div className="overflow-x-auto rounded-lg border shadow-sm bg-white">
+        <Table className="text-sm [&_*]:px-3 [&_*]:py-2">
+          <TableHeader className="bg-muted/50">
             <TableRow>
               {mode === "lots" ? (
                 <>
-                  <TableHead>User</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead>Delete</TableHead>
+                  <TableHead>Lot ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="text-center">Slots</TableHead>
+                  <TableHead className="text-center">Available</TableHead>
                 </>
               ) : (
                 <>
                   <TableHead>Lot</TableHead>
                   <TableHead>User</TableHead>
-                  <TableHead>Entered</TableHead>
-                  <TableHead>Exited</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Time</TableHead>
                 </>
               )}
             </TableRow>
@@ -213,45 +155,52 @@ export default function DataTableLotsAndLogs() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={6}>Loading...</TableCell>
+                <TableCell colSpan={10}>Loading…</TableCell>
               </TableRow>
             )}
 
-            {/* --- LOT REVIEWS MODE --- */}
+            {/* LOTS MODE */}
             {mode === "lots" &&
               !loading &&
-              reviews.map((r) => (
-                <TableRow key={r.userID + r.lotID}>
-                  <TableCell>{r.username}</TableCell>
-                  <TableCell>{r.title}</TableCell>
-                  <TableCell>{r.description?.String}</TableCell>
-                  <TableCell>{r.score}</TableCell>
-                  <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => deleteReview(r.userID, r.lotID)}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              lots.map((lot) => {
+                const available = Math.max(lot.slots - lot.ocupiedSlots, 0);
 
-            {/* --- PARKING LOGS MODE --- */}
+                const variant =
+                  available === 0
+                    ? "destructive"
+                    : available <= Math.ceil(lot.slots * 0.2)
+                    ? "secondary"
+                    : "outline";
+
+                return (
+                  <TableRow key={lot.id}>
+                    <TableCell>{lot.id}</TableCell>
+                    <TableCell>{lot.name}</TableCell>
+                    <TableCell className="text-center">{lot.slots}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={variant}>
+                        {available}/{lot.slots}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+
+            {/* LOGS MODE */}
             {mode === "logs" &&
               !loading &&
               logs.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell>{log.lotName}</TableCell>
-                  <TableCell>{log.userID || "N/A"}</TableCell>
-                  <TableCell>{new Date(log.timeEntered).toLocaleString()}</TableCell>
+                  <TableCell>{getLotName(log.parkingLotID)}</TableCell>
+                  <TableCell>{log.userID}</TableCell>
+
                   <TableCell>
-                    {log.timeExited
-                      ? new Date(log.timeExited).toLocaleString()
-                      : "Still Parked"}
+                    <Badge variant={log.eventType === "entry" ? "outline" : "secondary"}>
+                      {log.eventType.toUpperCase()}
+                    </Badge>
                   </TableCell>
+
+                  <TableCell>{new Date(log.time).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
           </TableBody>

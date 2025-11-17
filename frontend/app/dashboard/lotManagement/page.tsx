@@ -11,46 +11,28 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { tryRefresh } from "@/lib/tryRefresh";
 import { useAuthStore } from "@/app/stores/useAuthStore";
-import { useHydration } from "@/lib/useHydration";
+
 
 export default function Page() {
 
-  // ----------------------
-  // AUTH CHECK
-  // ----------------------
-  
-  const hydrated = useHydration();
-  const router = useRouter();
-
-  // Zustand subscriptions (safe)
-  const token = useAuthStore((s) => s.token);
-  const role = useAuthStore((s) => s.role);
+const token = useAuthStore((state) => state.token);
+const role = useAuthStore((state) => state.role);
+const router = useRouter();
 
   useEffect(() => {
-    if (!hydrated) return; // ⛔ prevents hydration race-conditions
-
-    async function verify() {
-      // 1️⃣ Wait for hydration before checking anything
+    const checkAuth = async () => {
       if (!token) {
         const ok = await tryRefresh();
         if (!ok) {
-          router.replace("/login");
+          router.push("/login");
           return;
         }
       }
+    };
 
-      // 2️⃣ After refresh, wait one render for role to populate
-      const newRole = useAuthStore.getState().role;
-      if (!newRole) return;
+    checkAuth();
+  }, [router]);
 
-      // 3️⃣ Role check
-      if (newRole !== "admin") {
-        router.replace("/dashboard");
-      }
-    }
-
-    verify();
-  }, [hydrated, token, role, router]);
 
   // ----------------------
   // LAYOUT
