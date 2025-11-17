@@ -204,6 +204,7 @@ export default function Map() {
   // Track where the current user is parked
   const [userParkingLotId, setUserParkingLotId] = useState<string | null>(null);
   const [userLoading, setUserLoading] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
 
   const handleLotClick = async (lotId: string) => {
     setSelectedLot(lotId);
@@ -224,6 +225,7 @@ export default function Map() {
       if (res.ok) {
         const data = await res.json();
         setUserParkingLotId(data.parkingLotID || null);
+        setCurrentUserName(data.name || null);
       } else {
         setUserParkingLotId(null);
       }
@@ -558,7 +560,7 @@ async function handleParkHere() {
     </p>
 
           {/* ⭐ Show controls ONLY if current user made the review */}
-          {rev.userID ===  ""&& (
+          {currentUserName && rev.username === currentUserName && (
             <div className="flex gap-2 mt-3">
               <Button
                 variant="default"
