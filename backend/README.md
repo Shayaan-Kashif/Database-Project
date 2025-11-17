@@ -494,7 +494,7 @@ Request:
 ```
 {
     "userID": "uuid",
-    "parkingLotID": "uuid"
+    "lotID": "uuid"
 }
 ```
 
