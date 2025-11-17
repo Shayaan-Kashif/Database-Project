@@ -17,12 +17,14 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
+  IconParking,  // ADD THIS
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+
 import {
   Sidebar,
   SidebarContent,
@@ -137,6 +139,11 @@ const data = {
       name: "Word Assistant",
       url: "#",
       icon: IconFileWord,
+    },
+    {
+      name: "Parking Management",  // ADD THIS NEW ITEM
+      url: "Database-Project/frontend/app/dashboard/parking-lots/page.tsx",  // LINK TO YOUR NEW PAGE
+      icon: IconParking,  // USE PARKING ICON
     },
   ],
 }
