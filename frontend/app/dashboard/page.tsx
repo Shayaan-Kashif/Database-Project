@@ -15,26 +15,36 @@ import { useRouter } from "next/navigation"
 import { tryRefresh } from "@/lib/tryRefresh"
 import { useAuthStore } from "@/app/stores/useAuthStore"
 import data from "./data.json"
+import { useHydration } from "@/lib/useHydration"
 
 export default function Page() {
   // ⭐ Only subscribe to token, not the whole store
-  const token = useAuthStore((state) => state.token);
-  const role = useAuthStore((state) => state.role);
+  const hydrated = useHydration(); // ⭐ Prevents hydration race conditions
   const router = useRouter();
 
+  // Subscribe correctly
+  const token = useAuthStore((s) => s.token);
+  const role = useAuthStore((s) => s.role);
+
   useEffect(() => {
-    const checkAuth = async () => {
+    if (!hydrated) return; // ⛔ Do nothing until hydration done
+
+    async function verify() {
+      // 1️⃣ After hydration—if no token—try to refresh
       if (!token) {
         const ok = await tryRefresh();
         if (!ok) {
-          router.push("/login");
+          router.replace("/login");
           return;
         }
       }
-    };
 
-    checkAuth();
-  }, [token, router, role]);
+      // 2️⃣ If token existed OR refresh succeeded → stay on dashboard
+    }
+
+    verify();
+  }, [hydrated, token, router]);
+
 
 
   console.log("Store token:", token);
