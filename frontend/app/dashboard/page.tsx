@@ -14,42 +14,52 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { tryRefresh } from "@/lib/tryRefresh"
 import { useAuthStore } from "@/app/stores/useAuthStore"
-import data from "./data.json"
 import { useHydration } from "@/lib/useHydration"
+import data from "./data.json"
 
 export default function Page() {
-  // ⭐ Only subscribe to token, not the whole store
-  const hydrated = useHydration(); // ⭐ Prevents hydration race conditions
+  const hydrated = useHydration();
   const router = useRouter();
 
-  // Subscribe correctly
   const token = useAuthStore((s) => s.token);
   const role = useAuthStore((s) => s.role);
 
   useEffect(() => {
-    if (!hydrated) return; // ⛔ Do nothing until hydration done
+  if (!hydrated) return;
 
-    async function verify() {
-      // 1️⃣ After hydration—if no token—try to refresh
-      if (!token) {
-        const ok = await tryRefresh();
-        if (!ok) {
-          router.replace("/login");
-          return;
-        }
-      }
+  // Delay 1: Allow Zustand to fully hydrate (token may still be null)
+  const t1 = setTimeout(() => {
+    const restoredToken = useAuthStore.getState().token;
 
-      // 2️⃣ If token existed OR refresh succeeded → stay on dashboard
+    // If token exists after hydration → allow access
+    if (restoredToken) {
+      console.log("JWT present after hydration");
+      return;
     }
 
-    verify();
-  }, [hydrated, token, router]);
+    // Delay 2: Give time for token to repopulate before refreshing
+    const t2 = setTimeout(async () => {
+      const latestToken = useAuthStore.getState().token;
 
+      // If token repopulated in the second delay → allow access
+      if (latestToken) {
+        console.log("JWT restored after double-delay");
+        return;
+      }
 
+      // Final check → if still no token → try refresh
+      const ok = await tryRefresh();
+      if (!ok) router.replace("/login");
+    }, 50); // 50ms is enough
+
+    return () => clearTimeout(t2);
+  }, 0);
+
+  return () => clearTimeout(t1);
+}, [hydrated, router]);
 
   console.log("Store token:", token);
   console.log("Store role:", role);
-
 
   return (
     <SidebarProvider
