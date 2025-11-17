@@ -150,26 +150,31 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 
 func (cfg *apiConfig) DeleteReview(res http.ResponseWriter, req *http.Request) {
 	reqStruct := struct {
-		UserID uuid.UUID `json:"userID"`
-		LotID  uuid.UUID `json:"lotID"`
+		UserID *uuid.UUID `json:"userID"`
+		LotID  *uuid.UUID `json:"lotID"`
 	}{}
 
 	decodeJSON(req, &reqStruct)
+
+	if reqStruct.UserID == nil || reqStruct.LotID == nil {
+		respondWithError(res, http.StatusBadRequest, "Invalid JSON format")
+		return
+	}
 
 	role := req.Context().Value(ctxRole).(string)
 
 	if role != "admin" {
 		userID := req.Context().Value(ctxUserID).(uuid.UUID)
 
-		if userID != reqStruct.UserID {
+		if userID != *reqStruct.UserID {
 			respondWithError(res, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 	}
 
 	sqlResult, err := cfg.dbQueries.DeleteReview(req.Context(), database.DeleteReviewParams{
-		UserID:       reqStruct.UserID,
-		ParkingLotID: reqStruct.LotID,
+		UserID:       *reqStruct.UserID,
+		ParkingLotID: *reqStruct.LotID,
 	})
 
 	if err != nil {
