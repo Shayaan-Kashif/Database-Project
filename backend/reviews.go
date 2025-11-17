@@ -73,9 +73,9 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 	}
 
 	reqStruct := struct {
-		Title        *string    `json:"title"`
-		Description  *string     `json:"description"`
-		Score        *int        `json:"score"`
+		Title       *string `json:"title"`
+		Description *string `json:"description"`
+		Score       *int    `json:"score"`
 	}{}
 
 	if err := decodeJSON(req, &reqStruct); err != nil {
@@ -83,7 +83,7 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if  (reqStruct.Title == nil && reqStruct.Description == nil && reqStruct.Score == nil) {
+	if reqStruct.Title == nil && reqStruct.Description == nil && reqStruct.Score == nil {
 		respondWithError(res, http.StatusBadRequest, "modification request invalid")
 		return
 	}
@@ -92,7 +92,6 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 		UserID:       userID,
 		ParkingLotID: parkingLotID,
 	})
-	
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -122,10 +121,10 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 	}
 
 	err = cfg.dbQueries.UpdateReview(req.Context(), database.UpdateReviewParams{
-		Title: currentToModifiedReview.Title,
-		Description: currentToModifiedReview.Description,
-		Score: currentToModifiedReview.Score,
-		UserID: userID,
+		Title:        currentToModifiedReview.Title,
+		Description:  currentToModifiedReview.Description,
+		Score:        currentToModifiedReview.Score,
+		UserID:       userID,
 		ParkingLotID: parkingLotID,
 	})
 
@@ -141,10 +140,53 @@ func (cfg *apiConfig) ModifyReview(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	responceStruct := struct{
+	responceStruct := struct {
 		Status string `json:"status"`
 	}{"The review has been modified"}
 
-	respondWithJSON(res, http.StatusOK,responceStruct )
+	respondWithJSON(res, http.StatusOK, responceStruct)
+
+}
+
+func (cfg *apiConfig) DeleteReview(res http.ResponseWriter, req *http.Request) {
+	reqStruct := struct {
+		UserID uuid.UUID `json:"userID"`
+		LotID  uuid.UUID `json:"lotID"`
+	}{}
+
+	decodeJSON(req, &reqStruct)
+
+	role := req.Context().Value(ctxRole).(string)
+
+	if role != "admin" {
+		userID := req.Context().Value(ctxUserID).(uuid.UUID)
+
+		if userID != reqStruct.UserID {
+			respondWithError(res, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+	}
+
+	sqlResult, err := cfg.dbQueries.DeleteReview(req.Context(), database.DeleteReviewParams{
+		UserID:       reqStruct.UserID,
+		ParkingLotID: reqStruct.LotID,
+	})
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rowsAffected, _ := sqlResult.RowsAffected()
+	if rowsAffected == 0 {
+		respondWithError(res, http.StatusNotFound, "No review with this id was found")
+		return
+	}
+
+	responseStruct := struct {
+		Status string `json:"status"`
+	}{"The review has been deleted"}
+
+	respondWithJSON(res, http.StatusOK, responseStruct)
 
 }

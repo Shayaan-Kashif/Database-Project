@@ -485,3 +485,24 @@ Response:
 ```
 
 ---
+
+# 27. Delete Review
+
+## DELETE /api/reviews
+
+Request:
+```
+{
+    "userID": "uuid",
+    "parkingLotID": "uuid"
+}
+```
+
+Response:
+```
+{
+    "status": "The review has been deleted"
+}
+```
+
+---
