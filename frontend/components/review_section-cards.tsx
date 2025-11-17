@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconTrendingUp, IconTrendingDown } from "@tabler/icons-react";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
-  CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -74,15 +70,11 @@ function ReviewSectionCards() {
         scrollbar-thumb-muted-foreground/30 
         scrollbar-track-transparent
       "
-      style={{
-        WebkitOverflowScrolling: "touch", // smooth mobile scrolling
-      }}
+      style={{ WebkitOverflowScrolling: "touch" }}
     >
-      {/* Inner scrolling row — ensures only this part scrolls */}
       <div className="inline-flex gap-4 px-4">
         {lots.map((lot) => {
           const count = lot.totalReviews ?? 0;
-          const isUp = count > 0;
 
           return (
             <Card
@@ -99,34 +91,7 @@ function ReviewSectionCards() {
                 <CardTitle className="text-2xl font-semibold">
                   {count}
                 </CardTitle>
-
-                <CardAction>
-                  <Badge variant="outline">
-                    {isUp ? <IconTrendingUp /> : <IconTrendingDown />}
-                    {isUp ? "+3.2%" : "0%"}
-                  </Badge>
-                </CardAction>
               </CardHeader>
-
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="flex gap-2 font-medium">
-                  {isUp ? (
-                    <>
-                      Trending up <IconTrendingUp className="size-4" />
-                    </>
-                  ) : (
-                    <>
-                      No reviews yet <IconTrendingDown className="size-4" />
-                    </>
-                  )}
-                </div>
-
-                <div className="text-muted-foreground">
-                  {isUp
-                    ? "User review activity detected"
-                    : "This lot currently has no reviews"}
-                </div>
-              </CardFooter>
             </Card>
           );
         })}

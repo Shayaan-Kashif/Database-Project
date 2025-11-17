@@ -19,7 +19,6 @@ import {
   SelectValue
 } from "@/components/ui/select";
 
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import { useAuthStore } from "@/app/stores/useAuthStore";
@@ -59,7 +58,7 @@ export default function DataTableReviews() {
   const token = useAuthStore((state) => state.token);
 
   // ---------------------
-  // Load lots from API
+  // Load lots
   // ---------------------
   useEffect(() => {
     async function loadLots() {
@@ -82,11 +81,9 @@ export default function DataTableReviews() {
         const sorted = data.sort((a, b) => {
           const indexA = order.indexOf(a.name);
           const indexB = order.indexOf(b.name);
-
           if (indexA !== -1 && indexB !== -1) return indexA - indexB;
           if (indexA !== -1) return -1;
           if (indexB !== -1) return 1;
-
           return a.name.localeCompare(b.name);
         });
 
@@ -119,17 +116,18 @@ export default function DataTableReviews() {
     }
   }
 
-useEffect(() => {
-  if (!selectedLot) return;
+  useEffect(() => {
+    if (!selectedLot) return;
 
-  const t = setTimeout(() => {
-    loadReviews();
-  }, 400); // ⭐ small delay helps API + token settle
+    const t = setTimeout(() => {
+      loadReviews();
+    }, 400);
 
-  return () => clearTimeout(t);
-}, [selectedLot]);
+    return () => clearTimeout(t);
+  }, [selectedLot]);
+
   // ---------------------
-  // Delete Review — FIXED REQUEST BODY
+  // Delete Review
   // ---------------------
   async function deleteReview(userID: string, lotID: string) {
     const ok = confirm("Are you sure you want to delete this review?");
@@ -147,16 +145,11 @@ useEffect(() => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          userID,
-          lotID, // ⛔ FIXED — now matches backend request format
-        }),
+        body: JSON.stringify({ userID, lotID }),
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Delete failed:", errorText);
-        alert("Delete failed: " + errorText);
+        alert("Delete failed: " + (await res.text()));
         return;
       }
 
@@ -180,7 +173,6 @@ useEffect(() => {
           <SelectTrigger>
             <SelectValue placeholder="Select Lot" />
           </SelectTrigger>
-
           <SelectContent>
             {lots.map((lot) => (
               <SelectItem key={lot.id} value={lot.id}>
@@ -191,27 +183,32 @@ useEffect(() => {
         </Select>
       </div>
 
-      {/* Table Wrapper + Compact Layout */}
+      {/* TABLE */}
       <div className="overflow-x-auto overflow-y-hidden rounded-lg border w-full">
         <Table
           className="
-           text-sm
-    [& th]:px-2 [& td]:px-2 
-    [& th]:py-1 [& td]:py-1
+            text-sm
+            [& th]:px-2 [& td]:px-2 
+            [& th]:py-1 [& td]:py-1
 
-    /* Smaller Title + Description columns */
-    [& th:nth-child(2)]:w-[100px]
-    [& td:nth-child(2)]:w-[100px]
+            /* Title column narrower */
+            [& th:nth-child(2)]:w-[90px]
+            [& td:nth-child(2)]:w-[90px]
 
-    [& th:nth-child(3)]:w-[220px]
-    [& td:nth-child(3)]:max-w-[220px] [& td:nth-child(3)]:truncate
+            /* DESCRIPTION — FIXED WIDTH + MULTILINE + SCROLLABLE */
+            [& th:nth-child(3)]:w-[220px]
+            [& td:nth-child(3)]:w-[220px]
+            [& td:nth-child(3)]:max-h-[85px]
+            [& td:nth-child(3)]:overflow-y-auto
+            [& td:nth-child(3)]:whitespace-pre-wrap
+            [& td:nth-child(3)]:break-words
 
-    /* CreatedAt & Delete tighter */
-    [& th:nth-last-child(2)]:w-[120px]
-    [& th:last-child]:w-[70px]
+            /* CreatedAt & Delete tighter */
+            [& th:nth-last-child(2)]:w-[110px]
+            [& th:last-child]:w-[60px]
 
-    [& td:nth-last-child(2)]:whitespace-nowrap
-    [& td:last-child]:text-center
+            [& td:nth-last-child(2)]:whitespace-nowrap
+            [& td:last-child]:text-center
           "
         >
           <TableHeader className="bg-muted">
@@ -226,7 +223,6 @@ useEffect(() => {
           </TableHeader>
 
           <TableBody>
-
             {loading && (
               <TableRow>
                 <TableCell colSpan={6}>Loading...</TableCell>
@@ -239,12 +235,20 @@ useEffect(() => {
               </TableRow>
             )}
 
-            {!loading && reviews.length > 0 &&
+            {!loading &&
+              reviews.length > 0 &&
               reviews.map((r) => (
                 <TableRow key={`${r.userID}-${r.lotID}`}>
                   <TableCell>{r.username}</TableCell>
                   <TableCell>{r.title}</TableCell>
-                  <TableCell>{r.description?.String || ""}</TableCell>
+
+                  {/* DESCRIPTION SCROLL BOX */}
+                  <TableCell>
+                    <div className="max-h-[85px] overflow-y-auto whitespace-pre-wrap break-words pr-1">
+                      {r.description?.String || ""}
+                    </div>
+                  </TableCell>
+
                   <TableCell>{r.score}</TableCell>
                   <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell>
 
