@@ -26,31 +26,29 @@ export default function Page() {
   const role = useAuthStore((s) => s.role);
 
   useEffect(() => {
-    if (!hydrated) return; // ⛔ prevents hydration race-conditions
+  if (!hydrated) return;
 
-    async function verify() {
-      // 1️⃣ Wait for hydration before checking anything
-      if (!token) {
-        const ok = await tryRefresh();
-        if (!ok) {
-          router.replace("/login");
-          return;
-        }
-      }
+  const timeout = setTimeout(async () => {
+    const currentToken = useAuthStore.getState().token;
 
-      // 2️⃣ After refresh, wait one render for role to populate
-      const newRole = useAuthStore.getState().role;
-      if (!newRole) return;
-
-      // 3️⃣ Role check
-      if (newRole !== "admin") {
-        router.replace("/dashboard");
+    // No token → try refresh token
+    if (!currentToken) {
+      const ok = await tryRefresh();
+      if (!ok) {
+        router.replace("/login");
+        return;
       }
     }
 
-    verify();
-  }, [hydrated, token, role, router]);
+    // After refresh, check role safely
+    const roleNow = useAuthStore.getState().role;
+    if (roleNow !== "admin") {
+      router.replace("/dashboard");
+    }
+  }, 1000); // ⭐ 1 second delay to fully hydrate
 
+  return () => clearTimeout(timeout);
+}, [hydrated]);
   // ⭐ FIX: ensure data is loaded
   useEffect(() => {
     async function load() {

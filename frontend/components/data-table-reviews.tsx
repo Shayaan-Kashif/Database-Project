@@ -119,10 +119,15 @@ export default function DataTableReviews() {
     }
   }
 
-  useEffect(() => {
-    loadReviews();
-  }, [selectedLot]);
+useEffect(() => {
+  if (!selectedLot) return;
 
+  const t = setTimeout(() => {
+    loadReviews();
+  }, 400); // ⭐ small delay helps API + token settle
+
+  return () => clearTimeout(t);
+}, [selectedLot]);
   // ---------------------
   // Delete Review — FIXED REQUEST BODY
   // ---------------------
