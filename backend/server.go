@@ -12,11 +12,10 @@ import (
 
 	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
-	"github.com/joho/godotenv"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/jackc/pgconn"
-	
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
@@ -38,19 +37,17 @@ func main() {
 
 	dbURL := os.Getenv("DB_URL")
 	config, err := pgx.ParseConfig(dbURL)
-	
+
 	if err != nil {
-		    log.Fatalf("Failed to parse DB_URL: %v", err)
+		log.Fatalf("Failed to parse DB_URL: %v", err)
 	}
 	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-
 
 	db := stdlib.OpenDB(*config)
 	defer db.Close()
 
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
-
 
 	apiConfig := apiConfig{
 		dbQueries: database.New(db),
@@ -94,6 +91,7 @@ func main() {
 	serverMux.Handle("GET /api/parkingLogsAll", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAllParkingLogs)))
 	serverMux.HandleFunc("GET /api/parkingHistory/{lotID}", apiConfig.getParkingHistory)
 	serverMux.Handle("DELETE /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.deleteUser)))
+	serverMux.Handle("PATCH /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.updateUser)))
 
 	fmt.Println("server is running on http://localhost:8080")
 

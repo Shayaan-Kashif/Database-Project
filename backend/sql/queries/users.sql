@@ -31,3 +31,11 @@ SELECT * FROM users;
 
 -- name: DeleteUser :execresult
 DELETE FROM users WHERE id = $1;
+
+-- name: UpdateUser :exec
+UPDATE users
+SET name = $1,
+email = $2,
+hashed_password = $3,
+updated_at = NOW()
+WHERE id = $4;
