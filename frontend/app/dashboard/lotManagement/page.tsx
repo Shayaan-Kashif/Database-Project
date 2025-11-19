@@ -64,7 +64,7 @@ export default function Page() {
       <AppSidebar variant="inset" />
 
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader title="Lot Management"/>
 
         {/* MAIN PAGE CONTENT */}
         <div className="flex flex-1 flex-col gap-6 py-6">

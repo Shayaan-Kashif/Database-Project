@@ -81,7 +81,7 @@ export default function Page() {
     >
       <AppSidebar variant="inset" />
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader title="Reviews Management"/>
 
         <div className="flex flex-1 flex-col gap-6 py-6">
           {/* ⭐ Your custom cards for reviews */}
