@@ -28,6 +28,7 @@ type ParkingLot = {
   name: string;
   slots: number;
   ocupiedSlots: number;
+  totalLogs?: number; // Logs count per lot
 };
 
 // Parking Logs
@@ -41,28 +42,42 @@ type ParkingLog = {
 
 export default function DataTableLotsAndLogs() {
   const [mode, setMode] = useState<"lots" | "logs">("lots");
-
   const [lots, setLots] = useState<ParkingLot[]>([]);
   const [logs, setLogs] = useState<ParkingLog[]>([]);
   const [loading, setLoading] = useState(false);
 
   const token = useAuthStore((s) => s.token);
-  console.log("TOKEN:", token);
 
   // -------------------------------
-  // LOAD PARKING LOTS
+  // LOAD PARKING LOTS AND LOG COUNTS
   // -------------------------------
   useEffect(() => {
     async function loadLots() {
       try {
-        const res = await fetch("http://localhost:8080/api/parkingLots", {
-          credentials: "include",
+        const [lotsRes, logsRes] = await Promise.all([
+          fetch("http://localhost:8080/api/parkingLots", {
+            credentials: "include",
+          }),
+          fetch("http://localhost:8080/api/countOfLogsPerLot", {
+            credentials: "include",
+          }),
+        ]);
+
+        const lotsData: ParkingLot[] = await lotsRes.json();
+        const logsData = await logsRes.json(); // {id, totalEntries}
+
+        // Merge log counts into lots
+        const merged = lotsData.map((lot) => {
+          const match = logsData.find((l: any) => l.id === lot.id);
+          return {
+            ...lot,
+            totalLogs: match?.totalEntries ?? 0,
+          };
         });
 
-        const data: ParkingLot[] = await res.json();
-        setLots(data);
+        setLots(merged);
       } catch (e) {
-        console.error("Failed to load parking lots:", e);
+        console.error("Failed to load parking lots or logs:", e);
       }
     }
 
@@ -79,19 +94,15 @@ export default function DataTableLotsAndLogs() {
       const res = await fetch("http://localhost:8080/api/parkingLogsAll", {
         method: "GET",
         credentials: "include",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       let data = await res.json();
 
       if (Array.isArray(data)) {
-        // ⭐ Sort by time DESC (latest first)
         data.sort(
           (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
         );
-
         setLogs(data);
       } else {
         setLogs([]);
@@ -142,19 +153,22 @@ export default function DataTableLotsAndLogs() {
           <TableHeader className="bg-muted/50">
             <TableRow>
               {mode === "lots" ? (
-                <>
-                  <TableHead>Lot ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-center">Slots</TableHead>
-                  <TableHead className="text-center">Available</TableHead>
-                </>
+                // LOTS TABLE HEADERS
+                [
+                  <TableHead key="id">Lot ID</TableHead>,
+                  <TableHead key="name">Name</TableHead>,
+                  <TableHead key="slots" className="text-center">Slots</TableHead>,
+                  <TableHead key="available" className="text-center">Available</TableHead>,
+                  <TableHead key="logs" className="text-center">Logs Count</TableHead>,
+                ]
               ) : (
-                <>
-                  <TableHead>Lot</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Time</TableHead>
-                </>
+                // LOGS TABLE HEADERS
+                [
+                  <TableHead key="lot">Lot</TableHead>,
+                  <TableHead key="user">User</TableHead>,
+                  <TableHead key="event">Event</TableHead>,
+                  <TableHead key="time">Time</TableHead>,
+                ]
               )}
             </TableRow>
           </TableHeader>
@@ -172,7 +186,6 @@ export default function DataTableLotsAndLogs() {
               !loading &&
               lots.map((lot) => {
                 const available = Math.max(lot.slots - lot.ocupiedSlots, 0);
-
                 const variant =
                   available === 0
                     ? "destructive"
@@ -190,24 +203,23 @@ export default function DataTableLotsAndLogs() {
                         {available}/{lot.slots}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-center">{lot.totalLogs}</TableCell>
                   </TableRow>
                 );
               })}
 
-            {/* LOGS TABLE (sorted) */}
+            {/* LOGS TABLE */}
             {mode === "logs" &&
               !loading &&
               logs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell>{getLotName(log.parkingLotID)}</TableCell>
                   <TableCell>{log.userID}</TableCell>
-
                   <TableCell>
                     <Badge variant={log.eventType === "entry" ? "outline" : "secondary"}>
                       {log.eventType.toUpperCase()}
                     </Badge>
                   </TableCell>
-
                   <TableCell>{new Date(log.time).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
