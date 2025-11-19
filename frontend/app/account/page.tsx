@@ -36,18 +36,16 @@ export default function AccountPage() {
   const router = useRouter();
 
   const token = useAuthStore((s) => s.token);
-  const role = useAuthStore((s) => s.role);
 
-  // user data
   const [user, setUser] = useState<any | null>(null);
 
-  // dialog state
-  const [openField, setOpenField] = useState<
-    null | "name" | "email" | "password"
-  >(null);
+  // ⭐ lotID → lotName map
+  const [lotMap, setLotMap] = useState<Record<string, string>>({});
+
+  const [openField, setOpenField] = useState<null | "name" | "email" | "password">(null);
 
   // ===================================================
-  // AUTH GUARD
+  // AUTH CHECK
   // ===================================================
   useEffect(() => {
     if (!hydrated) return;
@@ -59,7 +57,6 @@ export default function AccountPage() {
         const ok = await tryRefresh();
         if (!ok) {
           router.replace("/login");
-          return;
         }
       }
     }
@@ -68,35 +65,59 @@ export default function AccountPage() {
   }, [hydrated, router]);
 
   // ===================================================
-  // GET USER DATA
+  // LOAD USER DATA
   // ===================================================
-  useEffect(() => {
+  async function fetchUser() {
     if (!token) return;
 
-    async function loadUser() {
+    try {
+      const res = await fetch("http://localhost:8080/api/user", {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+      if (res.ok) setUser(data);
+      else console.error("Load user failed:", data);
+    } catch (err) {
+      console.error("Fetch user error:", err);
+    }
+  }
+
+  useEffect(() => {
+    fetchUser();
+  }, [token]);
+
+  // ===================================================
+  // LOAD PARKING LOTS AND BUILD MAP
+  // ===================================================
+  useEffect(() => {
+    async function loadLots() {
       try {
-        const res = await fetch("http://localhost:8080/api/user", {
+        const res = await fetch("http://localhost:8080/api/parkingLots", {
           credentials: "include",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         });
 
-        const data = await res.json();
+        const lots = await res.json();
 
         if (!res.ok) {
-          console.error("Failed:", data);
+          console.error("Failed to load lots:", lots);
           return;
         }
 
-        setUser(data);
+        const map: Record<string, string> = {};
+        lots.forEach((lot: any) => {
+          map[lot.id] = lot.name;
+        });
+
+        setLotMap(map);
       } catch (err) {
-        console.error("User fetch error:", err);
+        console.error("Lot fetch error:", err);
       }
     }
 
-    loadUser();
-  }, [token]);
+    loadLots();
+  }, []);
 
   if (!hydrated || !user) {
     return (
@@ -106,10 +127,15 @@ export default function AccountPage() {
     );
   }
 
+  // ✔ Get readable lot name
+  const lotDisplay =
+    user.parkingLotID
+      ? lotMap[user.parkingLotID] || user.parkingLotID
+      : "Not Parked";
+
   return (
     <SidebarProvider>
       <AppSidebar />
-
       <SidebarInset>
         <SiteHeader title=" " />
 
@@ -145,18 +171,16 @@ export default function AccountPage() {
               <div className="flex items-center justify-between py-4 border-b">
                 <div>
                   <p className="font-medium text-lg">Role</p>
-                  <p className="text-sm text-muted-foreground">
-                    {user.role}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{user.role}</p>
                 </div>
               </div>
 
-              {/* Parking Lot */}
+              {/* Parking Lot Display with Mapping */}
               <div className="flex items-center justify-between py-4 border-b">
                 <div>
                   <p className="font-medium text-lg">Parking Lot</p>
                   <p className="text-sm text-muted-foreground">
-                    {user.parkingLotID?.String || "Not Parked"}
+                    {lotDisplay}
                   </p>
                 </div>
               </div>
@@ -182,12 +206,7 @@ export default function AccountPage() {
             </CardContent>
           </Card>
 
-          {/* EDIT DIALOG */}
-          <EditDialog
-            openField={openField}
-            setOpenField={setOpenField}
-            reloadUser={() => window.location.reload()}
-          />
+          <EditDialog openField={openField} setOpenField={setOpenField} />
         </div>
       </SidebarInset>
     </SidebarProvider>
@@ -195,19 +214,9 @@ export default function AccountPage() {
 }
 
 // ===================================================
-// Reusable Account Field Block
+// Field Component
 // ===================================================
-function AccountField({
-  label,
-  value,
-  field,
-  onOpen,
-}: {
-  label: string;
-  value: string;
-  field: "name" | "email";
-  onOpen: (f: any) => void;
-}) {
+function AccountField({ label, value, field, onOpen }: any) {
   return (
     <div className="flex items-center justify-between py-4 border-b">
       <div>
@@ -240,15 +249,7 @@ function DateField({ label, value }: { label: string; value: string }) {
 // ===================================================
 // Edit Dialog
 // ===================================================
-function EditDialog({
-  openField,
-  setOpenField,
-  reloadUser,
-}: {
-  openField: "name" | "email" | "password" | null;
-  setOpenField: (v: any) => void;
-  reloadUser: () => void;
-}) {
+function EditDialog({ openField, setOpenField }: any) {
   const [value, setValue] = useState("");
 
   const titleMap: any = {
@@ -278,13 +279,17 @@ function EditDialog({
         return;
       }
 
-      alert("Updated!");
+      if (openField === "name") {
+        sessionStorage.setItem("name", value);
+      }
 
+      alert("Updated!");
       setOpenField(null);
       setValue("");
 
-      reloadUser(); // refresh the page data
-    } catch (e) {
+      // full reload (requested)
+      window.location.reload();
+    } catch (err) {
       alert("Network error");
     }
   }
