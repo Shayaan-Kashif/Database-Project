@@ -93,6 +93,7 @@ func main() {
 	serverMux.Handle("DELETE /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.deleteUser)))
 	serverMux.Handle("PATCH /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.updateUser)))
 	serverMux.Handle("DELETE /api/parkingLots/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.deleteParkingLot)))
+	serverMux.Handle("PATCH /api/parkingLots/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.updateParkingLot)))
 
 	fmt.Println("server is running on http://localhost:8080")
 

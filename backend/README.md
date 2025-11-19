@@ -552,3 +552,40 @@ Response:
 ```
 
 ---
+
+---
+
+# 31. Update Lot
+
+## PATCH /api/parkingLots/{lotID}
+
+Request:
+```
+{
+    "name": "Will", - Optional
+    "slots": 67 - Optional
+}
+```
+
+Response:
+```
+{
+    "status": "The parking lot has been updated"
+}
+```
+
+---
+
+---
+
+# 32. Logout
+
+## POST /api/logout
+
+```
+{
+    "status": "logout successful"
+}
+```
+
+---
