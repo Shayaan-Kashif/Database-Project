@@ -79,20 +79,23 @@ function ReviewSectionCards() {
           return (
             <Card
               key={lot.id}
-              className="
-                w-64 
-                shrink-0 
-                snap-start
-              "
+              className="w-64 shrink-0 snap-start flex flex-col justify-center items-center text-center"
             >
-              <CardHeader>
-                <CardDescription>{lot.name} Reviews</CardDescription>
+              <CardHeader className="flex flex-col items-center text-center p-2">
 
-                <CardTitle className="text-2xl font-semibold">
+                {/* Lot name – bigger + single-line */}
+                <div className="text-lg font-semibold whitespace-nowrap">
+                  {lot.name} Reviews
+                </div>
+
+                {/* Count – smaller + less bold */}
+                <div className="text-2xl font-medium mt-1">
                   {count}
-                </CardTitle>
+                </div>
+
               </CardHeader>
             </Card>
+
           );
         })}
       </div>
