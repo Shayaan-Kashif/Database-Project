@@ -16,3 +16,18 @@ RETURNING *;
 UPDATE parkinglots
 SET occupiedSlots = occupiedSlots + $1
 WHERE id = $2;
+
+-- name: GetParkingLotFromID :one
+SELECT *
+FROM parkinglots
+WHERE id = $1;
+
+-- name: DeleteParkingLot :execresult
+DELETE FROM parkinglots
+WHERE id = $1;
+
+-- name: UpdateParkingLot :exec
+UPDATE parkinglots
+SET name = $1,
+slots = $2
+WHERE id = $3;

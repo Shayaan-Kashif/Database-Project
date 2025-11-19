@@ -11,4 +11,13 @@ VALUES (
 -- name: GetLogs :many
 SELECT * FROM parking_logs;
 
+-- name: GetLogsFromUserID :many
+SELECT *
+FROM parking_logs
+WHERE user_id = $1;
 
+-- name: GetLogsFromLotID :many
+SELECT *
+FROM parking_logs
+WHERE parking_lot_id = $1
+ORDER BY time ASC;

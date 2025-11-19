@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
+import Image from "next/image";
 import {
   IconCamera,
   IconChartBar,
@@ -17,21 +18,21 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
-import { NavDocuments } from "@/components/nav-documents"
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
+import { NavDocuments } from "@/components/nav-documents";
+import { NavMain } from "@/components/nav-main";
+import { NavSecondary } from "@/components/nav-secondary";
+import { NavUser } from "@/components/nav-user";
+
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+
+import { usePathname } from "next/navigation";
 
 const data = {
   user: {
@@ -40,133 +41,58 @@ const data = {
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
-    {
-      title: "Overview",
-      url: "/dashboard",
-      icon: IconDashboard,
-    },
-    {
-      title: "Map",
-      url: "/map",
-      icon: IconListDetails,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-   
+    { title: "Overview", url: "/dashboard", icon: IconDashboard },
+    { title: "Map", url: "/map", icon: IconListDetails },
   ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
+  navSecondary: [],
   documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
-    },
+    { name: "Parking Lots Managment", url: "/dashboard/lotManagement", icon: IconDatabase },
+    { name: "User Logs", url: "/dashboard/userLogs", icon: IconReport },
+    { name: "Review Managment", url: "/dashboard/reviewsManagement", icon: IconFileWord },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
+      {/* Header with Theme-Aware Logo */}
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <a href="#">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center gap-3 px-3 py-3">
+
+          {/* Light mode logo */}
+          <Image
+            src="/OTU Logo 2.png"
+            alt="OTU Logo Light"
+            width={32}
+            height={32}
+            className="rounded-sm dark:hidden"
+          />
+
+          {/* Dark mode logo */}
+          <Image
+            src="/OTU Logo 2.png"   // CHANGE TO YOUR DARK LOGO FILE
+            //src="/OTU logo.png"   // CHANGE TO YOUR DARK LOGO FILE
+            alt="OTU Logo Dark"
+            width={32}
+            height={32}
+            className="rounded-sm hidden dark:block"
+          />
+
+          <span className="text-base font-semibold">OTU Parking</span>
+        </div>
       </SidebarHeader>
+
+      {/* Main Nav */}
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
+
+      {/* Footer */}
       <SidebarFooter>
         <NavUser user={data.user} />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

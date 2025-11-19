@@ -1,40 +1,79 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // If user visits '/', send them straight to /login
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Redirect root → login
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/signup'];
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  const publicRoutes = ["/login", "/signup"];
+  const isPublicRoute = publicRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
 
-  // Allow access to public routes
+  // Public pages don't need auth
   if (isPublicRoute) {
     return NextResponse.next();
   }
 
-  // Check for JWT cookies
-  const accessToken = request.cookies.get('access_token');
-  const refreshToken = request.cookies.get('refresh_token');
+  // Check for ACCESS token
+  const accessToken = request.cookies.get("access_token")?.value;
 
-  // If no JWT, redirect to login (with redirect param)
-  if (!accessToken && !refreshToken) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+  // ⭐ If access token exists, allow page to load
+  if (accessToken) {
+    return NextResponse.next();
   }
 
-  // Otherwise, allow access
-  return NextResponse.next();
+  // ⭐ If no access token, attempt to refresh
+  try {
+    const refreshResponse = await fetch("http://localhost:8080/api/refresh", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+      },
+    });
+
+    // Refresh failed → redirect to login
+    if (!refreshResponse.ok) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // ⭐ Refresh succeeded → extract new token
+    const data = await refreshResponse.json();
+    const newAccessToken = data?.access_token;
+
+    if (!newAccessToken) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // ⭐ Attach the new JWT as a Set-Cookie response header
+    const response = NextResponse.next();
+    response.cookies.set("access_token", newAccessToken, {
+      path: "/",
+      maxAge: 900, // match 15 minute expiry
+      sameSite: "lax",
+    });
+
+    return response;
+  } catch (err) {
+    console.error("REFRESH ERROR:", err);
+
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
 }
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!api|login.*|signup.*|dashboard.*|map.*|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg)$).*)",
   ],
 };

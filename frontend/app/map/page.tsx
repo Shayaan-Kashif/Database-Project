@@ -34,6 +34,10 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { IconArrowLeft, IconX } from "@tabler/icons-react";
 
+import { useAuthStore } from "@/app/stores/useAuthStore";
+
+import { tryRefresh } from "@/lib/tryRefresh"
+
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
   iconUrl: '/marker-icon.png',
@@ -72,7 +76,6 @@ interface Review {
 }
 
 const parkingLots: ParkingLot[] = [
-  // ... your lot data unchanged ...
   {
     id: 'Founders 5',
     coordinates: [
@@ -98,37 +101,37 @@ const parkingLots: ParkingLot[] = [
     color: 'green',
   },
 
-  // ... all your other lots including Commencement ...
+  { id: 'Founders 4',
+    coordinates: [
+      [43.9500923, -78.8985136],
+      [43.9502584, -78.8976673],
+      [43.9496380, -78.8973582],
+      [43.9493981, -78.8982373],
+    ],
+    color: 'orange',
+  },
 
-{ id: 'Founders 4', 
-  coordinates: [ 
-    [43.9500923, -78.8985136], 
-    [43.9502584, -78.8976673], 
-    [43.9496380, -78.8973582], 
-    [43.9493981, -78.8982373],
-   ], 
-   color: 'orange', },
+  { id: 'Founders 3',
+    coordinates: [
+      [43.9483961, -78.8987647],
+      [43.9484897, -78.8983637],
+      [43.9478795, -78.8981371],
+      [43.9478032, -78.8985153],
+    ],
+    color: 'black',
+  },
 
- { id: 'Founders 3', 
-  coordinates: [ 
-    [43.9483961, -78.8987647], 
-    [43.9484897, -78.8983637], 
-    [43.9478795, -78.8981371], 
-    [43.9478032, -78.8985153], 
-  ], 
-  color: 'black', }, 
-
- { id: 'Founders 1', 
-  coordinates: [ 
-    [43.9460000, -78.8956993], 
-    [43.9460823, -78.8953781], 
-    [43.9449244, -78.8948762], 
-    [43.9448746, -78.8942083], 
-    [43.9446393, -78.8940819], 
-    [43.9444411, -78.8949888], 
-  ], 
-  color: 'purple', },
-
+  { id: 'Founders 1',
+    coordinates: [
+      [43.9460000, -78.8956993],
+      [43.9460823, -78.8953781],
+      [43.9449244, -78.8948762],
+      [43.9448746, -78.8942083],
+      [43.9446393, -78.8940819],
+      [43.9444411, -78.8949888],
+    ],
+    color: 'purple',
+  },
 
   {
     id: 'Commencement',
@@ -149,6 +152,41 @@ const parkingLots: ParkingLot[] = [
 export default function Map() {
   const router = useRouter();
 
+  const token = useAuthStore((state) => state.token);
+  const name = useAuthStore((state) => state.name);
+  const role = useAuthStore((state) => state.role);
+
+  console.log("Store token:", token);
+  console.log("Store role:", role);
+  console.log("Store name:", name);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!token) {
+        const ok = await tryRefresh();
+        if (!ok) {
+          router.push("/login");
+          return;
+        }
+      }
+    };
+
+    checkAuth();
+  }, [token, router]);
+
+
+
+    // Delay rendering for smoother loading
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setReady(true);
+    }, 250); // 250ms delay
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -160,15 +198,46 @@ export default function Map() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
 
-  // ⭐ NEW STATE FOR REVIEW POPUP
-  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  //const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewDescription, setReviewDescription] = useState("");
   const [reviewScore, setReviewScore] = useState(5);
 
-  const handleLotClick = (lotId: string) => {
+  const [userParkingLotId, setUserParkingLotId] = useState<string | null>(null);
+  const [userLoading, setUserLoading] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingReviewUserID, setEditingReviewUserID] = useState<string | null>(null);
+
+
+  const handleLotClick = async (lotId: string) => {
     setSelectedLot(lotId);
     setIsSheetOpen(true);
+
+    setUserLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/api/user", {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserParkingLotId(data.parkingLotID || null);
+        setCurrentUserName(data.name || null);
+      } else {
+        setUserParkingLotId(null);
+      }
+    } catch {
+      setUserParkingLotId(null);
+    } finally {
+      setUserLoading(false);
+    }
   };
 
   // Fetch lot details
@@ -213,7 +282,7 @@ export default function Map() {
     };
   }, [selectedLot, isSheetOpen]);
 
-  // Fetch reviews after lotDetails loads
+  // Fetch reviews
   useEffect(() => {
     let aborted = false;
 
@@ -236,7 +305,7 @@ export default function Map() {
         if (!res.ok) throw new Error(`Failed to load reviews: ${res.status}`);
 
         const data: Review[] = await res.json();
-        if (!aborted) setReviews(data);
+        if (!aborted) setReviews(data.reverse());
       } catch (e: any) {
         if (!aborted) setReviewsError(e?.message ?? "Error loading reviews");
       } finally {
@@ -255,7 +324,6 @@ export default function Map() {
     lotDetails?.ocupiedSlots ??
     0;
 
-  // ⭐ NEW: SUBMIT REVIEW HANDLER
   async function submitReview() {
     if (!lotDetails) return;
 
@@ -270,7 +338,10 @@ export default function Map() {
       const res = await fetch("http://localhost:8080/api/reviews", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify(body),
       });
 
@@ -280,13 +351,11 @@ export default function Map() {
         return;
       }
 
-      // Close dialog + clear fields
       setReviewDialogOpen(false);
       setReviewTitle("");
       setReviewDescription("");
       setReviewScore(5);
 
-      // Refresh reviews
       const refreshed = await fetch(
         `http://localhost:8080/api/reviews/${lotDetails.id}`,
         { credentials: "include" }
@@ -298,207 +367,387 @@ export default function Map() {
     }
   }
 
+  async function deleteReview(userID: string, lotID: string) {
+  try {
+    const res = await fetch("http://localhost:8080/api/reviews", {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userID,
+        lotID,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Error: " + (data.error ?? "Failed to delete review"));
+      return;
+    }
+
+    alert(data.status);
+
+    // Refresh reviews after deletion
+    const refreshed = await fetch(
+      `http://localhost:8080/api/reviews/${lotID}`,
+      {
+        credentials: "include",
+      }
+    );
+    setReviews(await refreshed.json());
+
+  } catch (err: any) {
+    alert(err.message);
+  }
+}
+
+
+  async function handleParkHere() {
+    if (!lotDetails) return;
+
+    const isCurrentlyParkedHere = userParkingLotId === lotDetails.id;
+    const type = isCurrentlyParkedHere ? "exit" : "entry";
+
+    try {
+      const res = await fetch("http://localhost:8080/api/park", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          parkingLotID: lotDetails.id,
+          type,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + (err.error ?? "Failed to update parking status"));
+        return;
+      }
+
+      const data = await res.json();
+      alert(data.status ?? "Parking status updated");
+
+      if (type === "entry") {
+        setUserParkingLotId(lotDetails.id);
+      } else {
+        setUserParkingLotId(null);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+
+  async function updateReview(lotID: string) {
+  try {
+    const res = await fetch(`http://localhost:8080/api/reviews/${lotID}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: reviewTitle,
+        description: reviewDescription,
+        score: reviewScore,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Error: " + (data.error ?? "Failed to update review"));
+      return;
+    }
+
+    alert(data.status);
+
+    // Refresh reviews
+    const refreshed = await fetch(
+      `http://localhost:8080/api/reviews/${lotID}`,
+      { credentials: "include" }
+    );
+    setReviews(await refreshed.json());
+
+    // Reset
+    setIsEditing(false);
+    setEditingReviewUserID(null);
+    setReviewDialogOpen(false);
+
+  } catch (e: any) {
+    alert(e.message);
+  }
+}
+
+
+
+
   return (
-    <div className="relative h-screen w-full rounded-lg overflow-hidden">
-      
-      {/* Back Button */}
-      <div className="absolute top-[85px] left-4 z-[1000]">
-        <Button
-          onClick={() => router.push('/dashboard')}
-          variant="outline"
-          className="bg-background/90 backdrop-blur-sm shadow-md hover:bg-background"
-        >
-          <IconArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
-      </div>
+  <div className="relative h-screen w-full rounded-lg overflow-hidden">
 
-      {/* Sidebar */}
-      <Sheet
-        open={isSheetOpen}
-        onOpenChange={(open) => {
-          setIsSheetOpen(open);
-          if (!open) {
-            setSelectedLot(null);
-            setLotDetails(null);
-            setReviews(null);
-          }
-        }}
+    {/* Back Button */}
+    <div className="absolute top-[85px] left-4 z-[1000]">
+      <Button
+        onClick={() => router.push('/dashboard')}
+        variant="outline"
+        className="bg-background/90 backdrop-blur-sm shadow-md hover:bg-background"
       >
-        <SheetContent side="right" className="w-[400px] overflow-y-auto">
+        <IconArrowLeft className="mr-2 h-4 w-4" />
+        Back to Dashboard
+      </Button>
+    </div>
 
-          {selectedLot ? (
-            <>
-              <SheetHeader>
-                <SheetTitle>{selectedLot}</SheetTitle>
-                <SheetDescription>
-                  Viewing details for <strong>{selectedLot}</strong>.
-                </SheetDescription>
-              </SheetHeader>
+    {/* Side Sheet */}
+    <Sheet
+      open={isSheetOpen}
+      onOpenChange={(open) => {
+        setIsSheetOpen(open);
+        if (!open) {
+          setSelectedLot(null);
+          setLotDetails(null);
+          setReviews(null);
+          setUserParkingLotId(null);
+          setCurrentUserName(null);
+        }
+      }}
+    >
+      <SheetContent
+        side="right"
+        className="w-[420px] p-6 overflow-y-auto border-l border-border/50 shadow-lg"
+      >
+        {selectedLot ? (
+          <>
+            <SheetHeader className="mb-4">
+              <SheetTitle className="text-xl font-semibold">{selectedLot}</SheetTitle>
+              <SheetDescription>
+                Viewing details for <strong>{selectedLot}</strong>.
+              </SheetDescription>
+            </SheetHeader>
 
-              {/* Lot Details */}
-              <div className="mt-4 space-y-3">
-                {loading && <p>Loading...</p>}
-                {error && <p className="text-red-600">{error}</p>}
-                {!loading && !error && lotDetails && (
-                  <>
-                    <p>Total Slots: {lotDetails.slots}</p>
-                    <p>Occupied: {occupied}</p>
-                    <p>Available: {Math.max(0, lotDetails.slots - occupied)}</p>
+            {/* Lot Info */}
+            <div className="space-y-5">
+              {loading && <p className="text-sm opacity-70">Loading...</p>}
+              {error && <p className="text-red-600">{error}</p>}
 
-                    {/* ⭐ Replace Reserve Spot button */}
-                    <Button
-                      className="w-full"
-                      onClick={() => setReviewDialogOpen(true)}
-                    >
+              {!loading && !error && lotDetails && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <p><strong>Total Slots:</strong> {lotDetails.slots}</p>
+                    <p><strong>Occupied:</strong> {occupied}</p>
+                    <p><strong>Available:</strong> {Math.max(0, lotDetails.slots - occupied)}</p>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <Button className="w-full" onClick={() => setReviewDialogOpen(true)}>
                       Write a Review
                     </Button>
-                  </>
-                )}
-              </div>
 
-              {/* Reviews Section */}
-              <div className="mt-6 pt-4 border-t">
-                <h3 className="text-lg font-semibold mb-2">Reviews</h3>
+                    {userLoading ? (
+                      <Button disabled className="w-full">Loading...</Button>
+                    ) : (
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={handleParkHere}
+                      >
+                        {userParkingLotId === lotDetails.id ? "Leave Lot" : "I'm Parked Here"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
-                {reviewsLoading && <p>Loading reviews...</p>}
-                {reviewsError && <p className="text-red-600">{reviewsError}</p>}
+            {/* Reviews Section */}
+            <div className="mt-8 pt-6 border-t border-border/40">
+              <h3 className="text-lg font-semibold mb-3">Reviews</h3>
 
-                {!reviewsLoading &&
-                  !reviewsError &&
-                  reviews &&
-                  reviews.length === 0 && <p>No reviews yet.</p>}
+              {reviewsLoading && <p className="text-sm opacity-70">Loading reviews...</p>}
+              {reviewsError && <p className="text-red-600">{reviewsError}</p>}
 
-                {!reviewsLoading &&
-                  !reviewsError &&
-                  reviews &&
-                  reviews.length > 0 && (
-                    <div className="space-y-3">
-                      {reviews.map((rev) => (
-                        <div
-                          key={`${rev.userID}-${rev.createdAt}`}
-                          className="p-3 rounded border bg-muted/30"
-                        >
-                          <p className="text-lg font-bold mt-1">{rev.title}</p>
-                          <p className="font-semibold">{rev.username}</p>
-                          <p className="font-medium">⭐ {rev.score}/5</p>
-                          
+              {!reviewsLoading && !reviewsError && reviews?.length === 0 && (
+                <p className="text-sm opacity-70">No reviews yet. Be the first!</p>
+              )}
 
-                          {rev.description.Valid && (
-                            <p className="text-sm mt-1 whitespace-pre-wrap">
-                              {rev.description.String}
-                            </p>
-                          )}
-
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Created: {new Date(rev.createdAt).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Updated: {new Date(rev.updatedAt).toLocaleString()}
-                          </p>
+              {!reviewsLoading &&
+                !reviewsError &&
+                reviews &&
+                reviews.length > 0 && (
+                  <div className="space-y-4">
+                    {reviews.map((rev) => (
+                      <div
+                        key={`${rev.userID}-${rev.createdAt}`}
+                        className="p-4 rounded-lg border bg-muted/20 shadow-sm"
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="text-lg font-semibold">{rev.title}</p>
+                          <p className="text-sm font-medium text-yellow-600">⭐ {rev.score}/5</p>
                         </div>
-                      ))}
-                    </div>
-                  )}
-              </div>
-            </>
-          ) : (
-            <p>No lot selected.</p>
-          )}
-        </SheetContent>
-      </Sheet>
 
-      {/* ⭐ NEW — WRITE REVIEW POPUP DIALOG */}
-      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent className="max-w-md">
-          
-          <div className="flex justify-between items-center">
-            <DialogTitle>Write a Review</DialogTitle>
-            <DialogClose>
-              <IconX className="w-5 h-5 cursor-pointer" />
-            </DialogClose>
+                        <p className="text-sm font-semibold mt-1">{rev.username}</p>
+
+                        {rev.description.Valid && (
+                          <p className="text-sm mt-2 whitespace-pre-wrap text-muted-foreground">
+                            {rev.description.String}
+                          </p>
+                        )}
+
+                        <div className="mt-3 space-y-0.5 text-xs text-muted-foreground">
+                          <p>Created: {new Date(rev.createdAt).toLocaleString()}</p>
+                          <p>Updated: {new Date(rev.updatedAt).toLocaleString()}</p>
+                        </div>
+
+                        {currentUserName && rev.username === currentUserName && (
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                setIsEditing(true);
+                                setEditingReviewUserID(rev.userID);
+                                setReviewTitle(rev.title);
+                                setReviewDescription(
+                                  rev.description.Valid ? rev.description.String : ""
+                                );
+                                setReviewScore(rev.score);
+                                setReviewDialogOpen(true);
+                              }}
+                            >
+                              Edit
+                            </Button>
+
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete your review?")) {
+                                  deleteReview(rev.userID, rev.lotID);
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </>
+        ) : (
+          <p className="text-sm opacity-70">No lot selected.</p>
+        )}
+      </SheetContent>
+    </Sheet>
+
+    {/* Write/Edit Review Dialog */}
+    <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+      <DialogContent className="max-w-md p-6 space-y-4">
+        <div className="flex justify-between items-center">
+          <DialogTitle className="text-xl font-semibold">
+            {isEditing ? "Edit Review" : "Write a Review"}
+          </DialogTitle>
+          <DialogClose>
+            <IconX className="w-5 h-5 cursor-pointer" />
+          </DialogClose>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Title</label>
+            <Input
+              value={reviewTitle}
+              onChange={(e) => setReviewTitle(e.target.value)}
+              placeholder="Great parking!"
+              className="mt-1"
+            />
           </div>
 
-          <DialogHeader />
-
-          <div className="space-y-3 mt-2">
-            <div>
-              <label className="text-sm font-medium">Title</label>
-              <Input
-                value={reviewTitle}
-                onChange={(e) => setReviewTitle(e.target.value)}
-                placeholder="Great parking!"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Description (optional)</label>
-              <Textarea
-                value={reviewDescription}
-                onChange={(e) => setReviewDescription(e.target.value)}
-                placeholder="Your experience..."
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Score</label>
-              <select
-                className="border p-2 rounded w-full"
-                value={reviewScore}
-                onChange={(e) => setReviewScore(Number(e.target.value))}
-              >
-                {[1,2,3,4,5].map(n => (
-                  <option key={n} value={n}>{n} Stars</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="text-sm font-medium">Description (optional)</label>
+            <Textarea
+              value={reviewDescription}
+              onChange={(e) => setReviewDescription(e.target.value)}
+              placeholder="Share your experience..."
+              className="mt-1"
+            />
           </div>
 
-          <DialogFooter className="mt-4">
-            <Button className="w-full" onClick={submitReview}>
-              Submit Review
-            </Button>
-          </DialogFooter>
+          <div>
+            <label className="text-sm font-medium">Score</label>
+            <select
+              className="border p-2 rounded w-full mt-1"
+              value={reviewScore}
+              onChange={(e) => setReviewScore(Number(e.target.value))}
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>{n} Stars</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-        </DialogContent>
-      </Dialog>
-
-      {/* Map */}
-      <MapContainer
-        center={[43.948, -78.897]}
-        zoom={16}
-        scrollWheelZoom={true}
-        className="h-full w-full z-0"
-      >
-        <TileLayer
-          attribution='© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {parkingLots.map((lot) => (
-          <Polygon
-            key={lot.id}
-            positions={lot.coordinates as LatLngExpression[]}
-            pathOptions={{
-              color: selectedLot === lot.id ? 'red' : lot.color,
-              fillColor: selectedLot === lot.id ? 'red' : lot.color,
-              fillOpacity: selectedLot === lot.id ? 0.4 : 0.25,
-            }}
-            eventHandlers={{
-              click: () => handleLotClick(lot.id),
+        <DialogFooter>
+          <Button
+            className="w-full"
+            onClick={() => {
+              if (!lotDetails) return;
+              isEditing ? updateReview(lotDetails.id) : submitReview();
             }}
           >
-            {selectedLot === lot.id && (
-              <Popup>
-                <div className="text-sm">
-                  <p><strong>{lot.id}</strong></p>
-                  <p>Click “Write a Review” in the right panel.</p>
-                </div>
-              </Popup>
-            )}
-          </Polygon>
-        ))}
-      </MapContainer>
-    </div>
-  );
+            {isEditing ? "Update Review" : "Submit Review"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Map */}
+    <MapContainer
+      center={[43.948, -78.897]}
+      zoom={16}
+      scrollWheelZoom={true}
+      className="h-full w-full z-0"
+    >
+      <TileLayer
+        attribution='© OpenStreetMap contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      {parkingLots.map((lot) => (
+        <Polygon
+          key={lot.id}
+          positions={lot.coordinates as LatLngExpression[]}
+          pathOptions={{
+            color: selectedLot === lot.id ? "red" : lot.color,
+            fillColor: selectedLot === lot.id ? "red" : lot.color,
+            fillOpacity: selectedLot === lot.id ? 0.4 : 0.25,
+          }}
+          eventHandlers={{
+            click: () => handleLotClick(lot.id),
+          }}
+        >
+          {selectedLot === lot.id && (
+            <Popup>
+              <div className="text-sm">
+                <p><strong>{lot.id}</strong></p>
+                <p>Click “Write a Review” in the right panel.</p>
+              </div>
+            </Popup>
+          )}
+        </Polygon>
+      ))}
+    </MapContainer>
+  </div>
+);
+
 }

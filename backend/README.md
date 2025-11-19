@@ -92,6 +92,7 @@ Success:
 {
     "access_token": "<jwt>",
     "name": "John Doe"
+    "role": "user" or "admin"
 }
 ```
 
@@ -379,4 +380,212 @@ Response:
 
 ---
 
+# 21. Get Lot Data From ID
 
+## GET /api/parkingLots/{lotID}
+
+```
+{
+    "id": "uuid",
+    "name": "Lot C",
+    "slots": 40,
+    "occupiedSlots": 40
+}
+```
+
+---
+
+# 22. Get Logs For User
+
+## GET /api/parkingLogs
+
+```
+[
+    {
+        "id": "uuid",
+        "userID": "uuid",
+        "parkingLotID": "uuid",
+        "eventType": "entry" or "exit"
+        "time": "timestamp"
+    }
+]
+```
+
+---
+
+# 23. Get User From JWT
+
+## GET /api/user
+
+```
+
+{
+    "id": "uuid",
+    "name": "Will",
+    "email": "will@test.com",
+    "role": "admin" or "user",
+    "parkingLotID": "uuid",
+    "createdAt": "timestamp",
+    "updatedAt": "timestamp"
+}
+
+```
+
+---
+
+# 24. Get All Users (Admin Only)
+
+## GET /api/user
+
+```
+[
+    {
+        "id": "uuid",
+        "name": "Will",
+        "email": "will@test.com",
+        "role": "admin" or "user",
+        "parkingLotID": "uuid",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+    }
+]
+```
+
+---
+
+# 25. Get All Logs (Admin Only)
+
+## GET /api/parkingLogsAll
+
+```
+[
+    {
+        "id": "uuid",
+        "userID": "uuid",
+        "parkingLotID": "uuid",
+        "eventType": "entry" or "exit"
+        "time": "timestamp"
+    }
+]
+```
+
+---
+
+# 26. Get ParkingLot History
+
+## GET /api/parkingHistory/{lotID}
+
+```
+[
+    {
+        "date": "YYYY-MM-DD",
+        "entries": 3
+    }
+]
+```
+
+---
+
+# 27. Delete Review
+
+## DELETE /api/reviews
+
+Request:
+```
+{
+    "userID": "uuid",
+    "lotID": "uuid"
+}
+```
+
+Response:
+```
+{
+    "status": "The review has been deleted"
+}
+```
+
+---
+
+# 28. Delete User
+
+## DELETE /api/user
+
+```
+{
+    "status": "The user has been deleted"
+}
+```
+
+---
+
+# 29. Update User (At minimum one element in the request is required)
+
+## PATCH /api/user
+
+Request:
+```
+{
+    "name": "Will", - Optional
+    "email": "something@example.com", - Optional
+    "password": "test" - Optional
+}
+```
+
+Response:
+```
+{
+    "status": "The user has been updated"
+}
+```
+
+---
+
+# 30. Delete Lot
+
+## DELETE /api/parkingLots/{lotID}
+
+```
+{
+    "status": "The lot has been deleted"
+}
+```
+
+---
+
+---
+
+# 31. Update Lot
+
+## PATCH /api/parkingLots/{lotID}
+
+Request:
+```
+{
+    "name": "Will", - Optional
+    "slots": 67 - Optional
+}
+```
+
+Response:
+```
+{
+    "status": "The parking lot has been updated"
+}
+```
+
+---
+
+---
+
+# 32. Logout
+
+## POST /api/logout
+
+```
+{
+    "status": "logout successful"
+}
+```
+
+---
