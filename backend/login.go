@@ -197,7 +197,7 @@ func (cfg *apiConfig) refresh(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if time.Now().Before(dbToken.ExpiresAt) {
+	if time.Now().After(dbToken.ExpiresAt) {
 		if !dbToken.RevokedAt.Valid {
 			if err := cfg.dbQueries.RevokeToken(req.Context(), refreshToken); err != nil {
 				respondWithError(res, http.StatusInternalServerError, err.Error())
