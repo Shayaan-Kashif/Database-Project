@@ -521,7 +521,7 @@ Response:
 
 # 29. Update User (At minimum one element in the request is required)
 
-## DELETE /api/user
+## PATCH /api/user
 
 Request:
 ```

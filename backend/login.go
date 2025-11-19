@@ -175,6 +175,34 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 
 }
 
+func (cfg *apiConfig) logout(res http.ResponseWriter, req *http.Request) {
+	refreshToken, err := auth.GetRefreshTokenFromCookie(req)
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := cfg.dbQueries.RevokeToken(req.Context(), refreshToken); err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	http.SetCookie(res, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   false, //only for dev side, true for production
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/api/refresh",
+		MaxAge:   -1,
+	})
+
+	respondWithJSON(res, http.StatusOK, struct {
+		Status string `json:"status"`
+	}{"logout successful"})
+
+}
+
 func (cfg *apiConfig) refresh(res http.ResponseWriter, req *http.Request) {
 	refreshToken, err := auth.GetRefreshTokenFromCookie(req)
 	if err != nil {

@@ -67,6 +67,7 @@ func main() {
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
 	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 	serverMux.HandleFunc("POST /api/login", apiConfig.login)
+	serverMux.HandleFunc("POST /api/logout", apiConfig.logout)
 	serverMux.Handle("GET /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getUserFromID)))
 	serverMux.Handle("GET /api/users", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAllUsers)))
 	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
