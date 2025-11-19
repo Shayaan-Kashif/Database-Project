@@ -20,6 +20,8 @@ type User = {
   parkingLotID: string | null;
   createdAt: string;
   updatedAt: string;
+  totalReviews?: number;
+  totalLogs?: number;
 };
 
 export default function DataTableUsers() {
@@ -27,30 +29,49 @@ export default function DataTableUsers() {
   const [loading, setLoading] = useState(false);
 
   const token = useAuthStore((s) => s.token);
-  console.log("USERS PAGE TOKEN:", token);
 
-  // ------------------------------
-  // LOAD ALL USERS (requires token)
-  // ------------------------------
   useEffect(() => {
     async function loadUsers() {
       setLoading(true);
 
       try {
-        const res = await fetch("http://localhost:8080/api/users", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
+        const [usersRes, reviewsRes, logsRes] = await Promise.all([
+          fetch("http://localhost:8080/api/users", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          }),
+          fetch("http://localhost:8080/api/countOfReviewsPerUser", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          }),
+          fetch("http://localhost:8080/api/countOfLogsPerUser", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          }),
+        ]);
+
+        const usersData = await usersRes.json();
+        const reviewsData = await reviewsRes.json();
+        const logsData = await logsRes.json();
+
+        const merged = usersData.map((u: User) => {
+          const reviewMatch = reviewsData.find((r: any) => r.id === u.id);
+          const logMatch = logsData.find((l: any) => l.id === u.id);
+
+          return {
+            ...u,
+            totalReviews: reviewMatch?.totalReviews ?? 0,
+            totalLogs: logMatch?.totalEntries ?? 0,
+          };
         });
 
-        const data = await res.json();
-
-        if (Array.isArray(data)) setUsers(data);
-        else setUsers([]);
+        setUsers(merged);
       } catch (e) {
         console.error("Failed to load users:", e);
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -61,17 +82,37 @@ export default function DataTableUsers() {
 
   return (
     <div className="p-4 flex flex-col gap-6">
-      <h2 className="text-xl font-semibold">All Users</h2>
+      <h2 className="text-xl font-semibold dark:text-white">All Users</h2>
 
-      <div className="overflow-x-auto rounded-lg border shadow-sm bg-white">
-        <Table className="text-sm [&_*]:px-3 [&_*]:py-2">
-          <TableHeader className="bg-muted/50">
+      <div
+        className="
+          overflow-x-auto rounded-lg border shadow-sm 
+          bg-white 
+          dark:bg-neutral-900 
+          dark:border-neutral-800
+        "
+      >
+        <Table
+          className="
+            text-sm [&_*]:px-3 [&_*]:py-2
+            dark:text-gray-200
+          "
+        >
+          <TableHeader
+            className="
+              bg-muted/50 
+              dark:bg-neutral-800 
+              dark:text-gray-300
+            "
+          >
             <TableRow>
               <TableHead>User ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead className="text-center">Role</TableHead>
               <TableHead className="text-center">Parking Lot</TableHead>
+              <TableHead className="text-center">Number of Reviews</TableHead>
+              <TableHead className="text-center">Number of Logs</TableHead>
               <TableHead className="text-center">Created</TableHead>
               <TableHead className="text-center">Updated</TableHead>
             </TableRow>
@@ -86,19 +127,39 @@ export default function DataTableUsers() {
 
             {!loading &&
               users.map((u) => (
-                <TableRow key={u.id} className="hover:bg-muted/30">
+                <TableRow
+                  key={u.id}
+                  className="
+                    hover:bg-muted/30 
+                    dark:hover:bg-neutral-800 
+                    dark:border-neutral-700
+                  "
+                >
                   <TableCell>{u.id}</TableCell>
                   <TableCell>{u.name}</TableCell>
                   <TableCell>{u.email}</TableCell>
 
                   <TableCell className="text-center">
-                    <Badge variant={u.role === "admin" ? "secondary" : "outline"}>
+                    <Badge
+                      variant={
+                        u.role === "admin" ? "secondary" : "outline"
+                      }
+                      className="dark:bg-neutral-700 dark:text-white"
+                    >
                       {u.role}
                     </Badge>
                   </TableCell>
 
                   <TableCell className="text-center">
                     {u.parkingLotID ?? "N/A"}
+                  </TableCell>
+
+                  <TableCell className="text-center">
+                    {u.totalReviews}
+                  </TableCell>
+
+                  <TableCell className="text-center">
+                    {u.totalLogs}
                   </TableCell>
 
                   <TableCell className="text-center">
@@ -113,7 +174,10 @@ export default function DataTableUsers() {
 
             {!loading && users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">
+                <TableCell
+                  colSpan={10}
+                  className="text-center py-4 text-muted-foreground dark:text-gray-400"
+                >
                   No users found.
                 </TableCell>
               </TableRow>

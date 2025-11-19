@@ -62,7 +62,7 @@ const hydrated = useHydration();
       <AppSidebar variant="inset" />
 
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader title="User Logs"/>
 
         <div className="flex flex-1 flex-col p-6">
           <DataTableUsers />

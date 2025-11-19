@@ -9,7 +9,7 @@ import (
 	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
 	"github.com/google/uuid"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func (cfg *apiConfig) signUp(res http.ResponseWriter, req *http.Request) {
@@ -138,7 +138,7 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 			break
 		}
 
-		var pqErr *pq.Error
+		var pqErr *pgconn.PgError
 		if !(errors.As(err, &pqErr) && pqErr.Code == "23505") { //database connection error
 			respondWithError(res, http.StatusInternalServerError, err.Error())
 			return
@@ -157,7 +157,7 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 		HttpOnly: true,
 		Secure:   false, //only for dev side, true for production
 		SameSite: http.SameSiteLaxMode,
-		Path:     "/api/refresh",
+		Path:     "/api",
 		MaxAge:   3600,
 	})
 
@@ -172,6 +172,34 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 	}
 
 	respondWithJSON(res, http.StatusOK, responseStruct)
+
+}
+
+func (cfg *apiConfig) logout(res http.ResponseWriter, req *http.Request) {
+	refreshToken, err := auth.GetRefreshTokenFromCookie(req)
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := cfg.dbQueries.RevokeToken(req.Context(), refreshToken); err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	http.SetCookie(res, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   false, //only for dev side, true for production
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/api",
+		MaxAge:   -1,
+	})
+
+	respondWithJSON(res, http.StatusOK, struct {
+		Status string `json:"status"`
+	}{"logout successful"})
 
 }
 
@@ -197,7 +225,7 @@ func (cfg *apiConfig) refresh(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if time.Now().Before(dbToken.ExpiresAt) {
+	if time.Now().After(dbToken.ExpiresAt) {
 		if !dbToken.RevokedAt.Valid {
 			if err := cfg.dbQueries.RevokeToken(req.Context(), refreshToken); err != nil {
 				respondWithError(res, http.StatusInternalServerError, err.Error())
@@ -300,4 +328,116 @@ func (cfg *apiConfig) getAllUsers(res http.ResponseWriter, req *http.Request) {
 	}
 
 	respondWithJSON(res, http.StatusOK, response)
+}
+
+func (cfg *apiConfig) deleteUser(res http.ResponseWriter, req *http.Request) {
+	userID := req.Context().Value(ctxUserID).(uuid.UUID)
+
+	sqlResult, err := cfg.dbQueries.DeleteUser(req.Context(), userID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rowsAffected, _ := sqlResult.RowsAffected()
+	if rowsAffected == 0 {
+		respondWithError(res, http.StatusNotFound, "No user with this ID was found")
+		return
+	}
+
+	responseStruct := struct {
+		Status string `json:"status"`
+	}{"The user has been deleted"}
+
+	respondWithJSON(res, http.StatusOK, responseStruct)
+}
+
+func (cfg *apiConfig) updateUser(res http.ResponseWriter, req *http.Request) {
+	userID := req.Context().Value(ctxUserID).(uuid.UUID)
+
+	reqStruct := struct {
+		Name     *string `json:"name"`
+		Email    *string `json:"email"`
+		Password *string `json:"password"`
+	}{}
+
+	if err := decodeJSON(req, &reqStruct); err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if reqStruct.Name == nil && reqStruct.Email == nil && reqStruct.Password == nil {
+		respondWithError(res, http.StatusBadRequest, "modification request invalid")
+		return
+	}
+
+	currentToModifiedUser, err := cfg.dbQueries.GetUserFromID(req.Context(), userID)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			respondWithError(res, http.StatusBadRequest, "no user exist for that userID")
+			return
+		}
+
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if reqStruct.Name != nil {
+		if *reqStruct.Name == "" {
+			respondWithError(res, http.StatusBadRequest, "name cannot be empty")
+			return
+		}
+		currentToModifiedUser.Name = *reqStruct.Name
+	}
+
+	if reqStruct.Email != nil {
+		if *reqStruct.Email == "" {
+			respondWithError(res, http.StatusBadRequest, "email cannot be empty")
+			return
+		}
+		currentToModifiedUser.Email = *reqStruct.Email
+	}
+
+	if reqStruct.Password != nil {
+		if *reqStruct.Password == "" {
+			respondWithError(res, http.StatusBadRequest, "password cannot be empty")
+			return
+		}
+		hashedPassword, err := auth.Hashpassword(*reqStruct.Password)
+
+		if err != nil {
+			respondWithError(res, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		currentToModifiedUser.HashedPassword = hashedPassword
+	}
+
+	err = cfg.dbQueries.UpdateUser(req.Context(), database.UpdateUserParams{
+		Name:           currentToModifiedUser.Name,
+		Email:          currentToModifiedUser.Email,
+		HashedPassword: currentToModifiedUser.HashedPassword,
+		ID:             userID,
+	})
+
+	hasPgErr, message := handlePgConstraints(err)
+
+	if hasPgErr {
+		respondWithError(res, http.StatusBadRequest, message)
+		return
+	}
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responceStruct := struct {
+		Status string `json:"status"`
+	}{"The user has been modified"}
+
+	respondWithJSON(res, http.StatusOK, responceStruct)
+
 }

@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -55,6 +56,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.Role,
 	)
 	return i, err
+}
+
+const deleteUser = `-- name: DeleteUser :execresult
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteUser, id)
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
@@ -133,6 +142,32 @@ func (q *Queries) GetUserFromID(ctx context.Context, id uuid.UUID) (User, error)
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :exec
+UPDATE users
+SET name = $1,
+email = $2,
+hashed_password = $3,
+updated_at = NOW()
+WHERE id = $4
+`
+
+type UpdateUserParams struct {
+	Name           string
+	Email          string
+	HashedPassword string
+	ID             uuid.UUID
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.ExecContext(ctx, updateUser,
+		arg.Name,
+		arg.Email,
+		arg.HashedPassword,
+		arg.ID,
+	)
+	return err
 }
 
 const updateUserParkingLot = `-- name: UpdateUserParkingLot :exec

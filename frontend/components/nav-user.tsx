@@ -1,10 +1,8 @@
 "use client"
 
 import {
-  IconCreditCard,
   IconDotsVertical,
   IconLogout,
-  IconNotification,
   IconUserCircle,
 } from "@tabler/icons-react"
 
@@ -29,10 +27,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { logout } from "@/lib/api"
+import { useRouter } from "next/navigation"
 
 import { useAuthStore } from "@/app/stores/useAuthStore";
 
 export function NavUser({
+
   user,
 }: {
   user: {
@@ -49,6 +49,7 @@ export function NavUser({
 
   const name = useAuthStore((state) => state.name);
   const role = useAuthStore((state) => state.role);
+  const router = useRouter();
 
   return (
     <SidebarMenu>
@@ -94,12 +95,12 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/account")}>
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              
             </DropdownMenuGroup>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <IconLogout />

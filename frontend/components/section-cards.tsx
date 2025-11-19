@@ -1,23 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
-
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardAction,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 type ParkingLot = {
   id: string;
   name: string;
   slots: number;
-  ocupiedSlots: number; // your API version
+  ocupiedSlots: number;
 };
 
 export function SectionCards() {
@@ -32,7 +22,6 @@ export function SectionCards() {
 
         const data: ParkingLot[] = await res.json();
 
-        // custom ordering
         const order = [
           "Founders 1",
           "Founders 2",
@@ -66,45 +55,32 @@ export function SectionCards() {
       <div className="flex gap-4 px-4 min-w-max">
         {lots.map((lot) => {
           const available = lot.slots - lot.ocupiedSlots;
-          const isUp = available > 0;
 
           return (
-            <Card key={lot.id} className="@container/card w-64 shrink-0">
-              <CardHeader>
-                <CardDescription>{lot.name} Available Spots</CardDescription>
+            <Card
+              key={lot.id}
+              className="w-64 h-40 flex flex-col justify-center items-center text-center"
+            >
+              <CardHeader className="flex flex-col items-center text-center p-2">
+    
+                {/* Lot name on one line */}
+                <div className="text-lg font-semibold whitespace-nowrap">
+                  {lot.name}
+                </div>
 
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                {/* Number (smaller + less bold) */}
+                <div className="text-2xl font-medium mt-1">
                   {available}
-                </CardTitle>
+                </div>
 
-                <CardAction>
-                  <Badge variant="outline">
-                    {isUp ? <IconTrendingUp /> : <IconTrendingDown />}
-                    {isUp ? "+12.5%" : "-20%"}
-                  </Badge>
-                </CardAction>
+                <div className="text-sm text-muted-foreground">
+                  Available Spots
+                </div>
+
               </CardHeader>
-
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="flex gap-2 font-medium">
-                  {isUp ? (
-                    <>
-                      Trending up <IconTrendingUp className="size-4" />
-                    </>
-                  ) : (
-                    <>
-                      Trending down <IconTrendingDown className="size-4" />
-                    </>
-                  )}
-                </div>
-
-                <div className="text-muted-foreground">
-                  {isUp
-                    ? "Visitors for the last 6 months"
-                    : "Engagement needs attention"}
-                </div>
-              </CardFooter>
             </Card>
+
+
           );
         })}
       </div>

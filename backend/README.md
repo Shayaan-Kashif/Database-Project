@@ -506,3 +506,86 @@ Response:
 ```
 
 ---
+
+# 28. Delete User
+
+## DELETE /api/user
+
+```
+{
+    "status": "The user has been deleted"
+}
+```
+
+---
+
+# 29. Update User (At minimum one element in the request is required)
+
+## PATCH /api/user
+
+Request:
+```
+{
+    "name": "Will", - Optional
+    "email": "something@example.com", - Optional
+    "password": "test" - Optional
+}
+```
+
+Response:
+```
+{
+    "status": "The user has been updated"
+}
+```
+
+---
+
+# 30. Delete Lot
+
+## DELETE /api/parkingLots/{lotID}
+
+```
+{
+    "status": "The lot has been deleted"
+}
+```
+
+---
+
+---
+
+# 31. Update Lot
+
+## PATCH /api/parkingLots/{lotID}
+
+Request:
+```
+{
+    "name": "Will", - Optional
+    "slots": 67 - Optional
+}
+```
+
+Response:
+```
+{
+    "status": "The parking lot has been updated"
+}
+```
+
+---
+
+---
+
+# 32. Logout
+
+## POST /api/logout
+
+```
+{
+    "status": "logout successful"
+}
+```
+
+---

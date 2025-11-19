@@ -21,3 +21,13 @@ WHERE id = $2;
 SELECT *
 FROM parkinglots
 WHERE id = $1;
+
+-- name: DeleteParkingLot :execresult
+DELETE FROM parkinglots
+WHERE id = $1;
+
+-- name: UpdateParkingLot :exec
+UPDATE parkinglots
+SET name = $1,
+slots = $2
+WHERE id = $3;

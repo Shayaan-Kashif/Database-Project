@@ -12,8 +12,10 @@ import (
 
 	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
-	"github.com/lib/pq"
 )
 
 type apiConfig struct {
@@ -34,11 +36,18 @@ func main() {
 	godotenv.Load()
 
 	dbURL := os.Getenv("DB_URL")
-	db, err := sql.Open("postgres", dbURL)
+	config, err := pgx.ParseConfig(dbURL)
+
 	if err != nil {
-		fmt.Println("Cannot load database")
-		return
+		log.Fatalf("Failed to parse DB_URL: %v", err)
 	}
+	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	db := stdlib.OpenDB(*config)
+	defer db.Close()
+
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
 
 	apiConfig := apiConfig{
 		dbQueries: database.New(db),
@@ -58,6 +67,7 @@ func main() {
 	serverMux.HandleFunc("POST /api/testDB", apiConfig.testDB)
 	serverMux.HandleFunc("POST /api/users", apiConfig.signUp)
 	serverMux.HandleFunc("POST /api/login", apiConfig.login)
+	serverMux.HandleFunc("POST /api/logout", apiConfig.logout)
 	serverMux.Handle("GET /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getUserFromID)))
 	serverMux.Handle("GET /api/users", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAllUsers)))
 	serverMux.HandleFunc("POST /api/refresh", apiConfig.refresh)
@@ -81,6 +91,10 @@ func main() {
 	serverMux.Handle("GET /api/parkingLogs", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getParkingLogsFromUserID)))
 	serverMux.Handle("GET /api/parkingLogsAll", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAllParkingLogs)))
 	serverMux.HandleFunc("GET /api/parkingHistory/{lotID}", apiConfig.getParkingHistory)
+	serverMux.Handle("DELETE /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.deleteUser)))
+	serverMux.Handle("PATCH /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.updateUser)))
+	serverMux.Handle("DELETE /api/parkingLots/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.deleteParkingLot)))
+	serverMux.Handle("PATCH /api/parkingLots/{lotID}", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.updateParkingLot)))
 
 	fmt.Println("server is running on http://localhost:8080")
 
@@ -156,7 +170,7 @@ func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 		res.Header().Set("Access-Control-Allow-Credentials", "true")
-		res.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		res.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 		res.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
 		if req.Method == http.MethodOptions {
@@ -193,10 +207,10 @@ func (cfg *apiConfig) authMiddleWare(next http.Handler) http.Handler {
 }
 
 func handlePgConstraints(err error) (bool, string) {
-	var pqErr *pq.Error
+	var pgErr *pgconn.PgError
 	//postgres violation codes: unique, foreign key, check, not null violation in that order
-	if errors.As(err, &pqErr) && (pqErr.Code == "23505" || pqErr.Code == "23503" || pqErr.Code == "23514" || pqErr.Code == "23502") {
-		return true, pqErr.Message
+	if errors.As(err, &pgErr) && (pgErr.Code == "23505" || pgErr.Code == "23503" || pgErr.Code == "23514" || pgErr.Code == "23502") {
+		return true, pgErr.Message
 	}
 
 	return false, ""
