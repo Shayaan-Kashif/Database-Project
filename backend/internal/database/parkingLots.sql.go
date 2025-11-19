@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -37,6 +38,15 @@ func (q *Queries) CreateParkingLot(ctx context.Context, arg CreateParkingLotPara
 		&i.Occupiedslots,
 	)
 	return i, err
+}
+
+const deleteParkingLot = `-- name: DeleteParkingLot :execresult
+DELETE FROM parkinglots
+WHERE id = $1
+`
+
+func (q *Queries) DeleteParkingLot(ctx context.Context, id uuid.UUID) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteParkingLot, id)
 }
 
 const getParkingLotFromID = `-- name: GetParkingLotFromID :one

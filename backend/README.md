@@ -541,3 +541,14 @@ Response:
 
 ---
 
+# 30. Delete Lot
+
+## DELETE /api/parkingLots/{lotID}
+
+```
+{
+    "status": "The lot has been deleted"
+}
+```
+
+---

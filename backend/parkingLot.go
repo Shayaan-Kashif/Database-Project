@@ -130,3 +130,38 @@ func (cfg *apiConfig) getParkingLotFromID(res http.ResponseWriter, req *http.Req
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) deleteParkingLot(res http.ResponseWriter, req *http.Request) {
+	role := req.Context().Value(ctxRole).(string)
+
+	if role != "admin" {
+		respondWithError(res, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	sqlResult, err := cfg.dbQueries.DeleteParkingLot(req.Context(), lotID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rowsAffected, _ := sqlResult.RowsAffected()
+	if rowsAffected == 0 {
+		respondWithError(res, http.StatusNotFound, "No lot with this ID was found")
+		return
+	}
+
+	responseStruct := struct {
+		Status string `json:"status"`
+	}{"The parking lot has been deleted"}
+
+	respondWithJSON(res, http.StatusOK, responseStruct)
+}
