@@ -518,3 +518,26 @@ Response:
 ```
 
 ---
+
+# 29. Update User (At minimum one element in the request is required)
+
+## DELETE /api/user
+
+Request:
+```
+{
+    "name": "Will", - Optional
+    "email": "something@example.com", - Optional
+    "password": "test" - Optional
+}
+```
+
+Response:
+```
+{
+    "status": "The user has been updated"
+}
+```
+
+---
+

@@ -144,6 +144,32 @@ func (q *Queries) GetUserFromID(ctx context.Context, id uuid.UUID) (User, error)
 	return i, err
 }
 
+const updateUser = `-- name: UpdateUser :exec
+UPDATE users
+SET name = $1,
+email = $2,
+hashed_password = $3,
+updated_at = NOW()
+WHERE id = $4
+`
+
+type UpdateUserParams struct {
+	Name           string
+	Email          string
+	HashedPassword string
+	ID             uuid.UUID
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.ExecContext(ctx, updateUser,
+		arg.Name,
+		arg.Email,
+		arg.HashedPassword,
+		arg.ID,
+	)
+	return err
+}
+
 const updateUserParkingLot = `-- name: UpdateUserParkingLot :exec
 UPDATE users
 SET parking_lot_id = $1
