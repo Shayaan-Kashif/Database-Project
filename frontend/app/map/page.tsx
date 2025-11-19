@@ -198,7 +198,7 @@ export default function Map() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
 
-  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  //const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewDescription, setReviewDescription] = useState("");
   const [reviewScore, setReviewScore] = useState(5);
@@ -206,6 +206,11 @@ export default function Map() {
   const [userParkingLotId, setUserParkingLotId] = useState<string | null>(null);
   const [userLoading, setUserLoading] = useState(false);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingReviewUserID, setEditingReviewUserID] = useState<string | null>(null);
+
 
   const handleLotClick = async (lotId: string) => {
     setSelectedLot(lotId);
@@ -300,7 +305,7 @@ export default function Map() {
         if (!res.ok) throw new Error(`Failed to load reviews: ${res.status}`);
 
         const data: Review[] = await res.json();
-        if (!aborted) setReviews(data);
+        if (!aborted) setReviews(data.reverse());
       } catch (e: any) {
         if (!aborted) setReviewsError(e?.message ?? "Error loading reviews");
       } finally {
@@ -362,40 +367,44 @@ export default function Map() {
     }
   }
 
-  async function deleteReview(userID: string, parkingLotID: string) {
-    try {
-      const res = await fetch("http://localhost:8080/api/reviews", {
-        method: "DELETE",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userID,
-          parkingLotID,
-        }),
-      });
+  async function deleteReview(userID: string, lotID: string) {
+  try {
+    const res = await fetch("http://localhost:8080/api/reviews", {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userID,
+        lotID,
+      }),
+    });
 
-      if (!res.ok) {
-        const err = await res.json();
-        alert("Error: " + err.error);
-        return;
-      }
+    const data = await res.json();
 
-      const data = await res.json();
-      alert(data.status);
-
-      const refreshed = await fetch(
-        `http://localhost:8080/api/reviews/${parkingLotID}`,
-        { credentials: "include" }
-      );
-      setReviews(await refreshed.json());
-
-    } catch (err: any) {
-      alert(err.message);
+    if (!res.ok) {
+      alert("Error: " + (data.error ?? "Failed to delete review"));
+      return;
     }
+
+    alert(data.status);
+
+    // Refresh reviews after deletion
+    const refreshed = await fetch(
+      `http://localhost:8080/api/reviews/${lotID}`,
+      {
+        credentials: "include",
+      }
+    );
+    setReviews(await refreshed.json());
+
+  } catch (err: any) {
+    alert(err.message);
   }
+}
+
 
   async function handleParkHere() {
     if (!lotDetails) return;
@@ -435,6 +444,50 @@ export default function Map() {
       alert(err.message);
     }
   }
+
+
+  async function updateReview(lotID: string) {
+  try {
+    const res = await fetch(`http://localhost:8080/api/reviews/${lotID}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: reviewTitle,
+        description: reviewDescription,
+        score: reviewScore,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Error: " + (data.error ?? "Failed to update review"));
+      return;
+    }
+
+    alert(data.status);
+
+    // Refresh reviews
+    const refreshed = await fetch(
+      `http://localhost:8080/api/reviews/${lotID}`,
+      { credentials: "include" }
+    );
+    setReviews(await refreshed.json());
+
+    // Reset
+    setIsEditing(false);
+    setEditingReviewUserID(null);
+    setReviewDialogOpen(false);
+
+  } catch (e: any) {
+    alert(e.message);
+  }
+}
+
 
 
 
@@ -554,23 +607,28 @@ export default function Map() {
                               <Button
                                 variant="default"
                                 size="sm"
-                                onClick={() => console.log("Edit coming soon")}
+                                onClick={() => {
+                                  setIsEditing(true);
+                                  setEditingReviewUserID(rev.userID);
+                                  setReviewTitle(rev.title);
+                                  setReviewDescription(rev.description.Valid ? rev.description.String : "");
+                                  setReviewScore(rev.score);
+                                  setReviewDialogOpen(true);
+                                }}
                               >
                                 Edit
                               </Button>
 
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => console.log("Mark parked coming soon")}
-                              >
-                                I’m Parked?
-                              </Button>
+                      
 
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => deleteReview(rev.userID, rev.lotID)}
+                               onClick={() => {
+                                  if (confirm("Are you sure you want to delete your review?")) {
+                                    deleteReview(rev.userID, rev.lotID);
+                                  }
+                                }}
                               >
                                 Delete
                               </Button>
@@ -635,9 +693,21 @@ export default function Map() {
           </div>
 
           <DialogFooter className="mt-4">
-            <Button className="w-full" onClick={submitReview}>
-              Submit Review
+            <Button
+              className="w-full"
+              onClick={() => {
+                if (!lotDetails) return;
+
+                if (isEditing) {
+                  updateReview(lotDetails.id);
+                } else {
+                  submitReview();
+                }
+              }}
+            >
+              {isEditing ? "Update Review" : "Submit Review"}
             </Button>
+
           </DialogFooter>
 
         </DialogContent>

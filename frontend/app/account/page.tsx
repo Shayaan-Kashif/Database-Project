@@ -23,6 +23,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+// ========================================================================
+// MAIN PAGE
+// ========================================================================
 export default function AccountPage() {
   const hydrated = useHydration();
   const router = useRouter();
@@ -40,21 +43,15 @@ export default function AccountPage() {
     const t1 = setTimeout(() => {
       const restoredToken = useAuthStore.getState().token;
 
-      if (restoredToken) {
-        console.log("JWT present after hydration");
-        return;
-      }
+      if (restoredToken) return;
 
-      // Delay 2: give a chance to repopulate token
+      // Delay 2: Allow token to repopulate
       const t2 = setTimeout(async () => {
-        const latestToken = useAuthStore.getState().token;
+        const latest = useAuthStore.getState().token;
 
-        if (latestToken) {
-          console.log("JWT restored during second delay");
-          return;
-        }
+        if (latest) return;
 
-        // If no token → refresh
+        // Final attempt: Refresh
         const ok = await tryRefresh();
         if (!ok) router.replace("/login");
       }, 50);
@@ -65,91 +62,82 @@ export default function AccountPage() {
     return () => clearTimeout(t1);
   }, [hydrated, router]);
 
-  console.log("Store token:", token);
-  console.log("Store role:", role);
-
-  // ========================================================================
-  // UI STATE
-  // ========================================================================
-  const [openField, setOpenField] = useState<null | "name" | "email" | "password">(null);
-
-  // mock data
+  // mock user data for UI
   const user = {
     name: "John Doe",
     email: "john@example.com",
   };
 
-  // ========================================================================
-  // RENDER
-  // ========================================================================
+  const [openField, setOpenField] = useState<null | "name" | "email" | "password">(null);
+
   return (
     <SidebarProvider>
-  <AppSidebar />
+      <AppSidebar />
 
-  <SidebarInset>
-    <SiteHeader />
+      <SidebarInset>
+        <SiteHeader />
 
-    <div className="px-8 py-10 max-w-5xl mx-auto w-full">
-      <h1 className="text-3xl font-bold mb-8">Account</h1>
+        <div className="px-8 py-10 max-w-5xl mx-auto w-full">
+          <h1 className="text-3xl font-bold mb-8">Account</h1>
 
-      <Card className="p-8 rounded-xl min-h-[450px] shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Account Settings</CardTitle>
-        </CardHeader>
+          <Card className="p-8 rounded-xl min-h-[450px] shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl font-semibold">Account Settings</CardTitle>
+            </CardHeader>
 
-        <CardContent className="space-y-10 mt-4">
-          
-          {/* Name */}
-          <div className="flex items-center justify-between py-4 border-b">
-            <div>
-              <p className="font-medium text-lg">Name</p>
-              <p className="text-sm text-muted-foreground">{user.name}</p>
-            </div>
-            <Button variant="outline" onClick={() => setOpenField("name")}>
-              Change
-            </Button>
-          </div>
+            <CardContent className="space-y-10 mt-4">
 
-          {/* Email */}
-          <div className="flex items-center justify-between py-4 border-b">
-            <div>
-              <p className="font-medium text-lg">Email</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-            <Button variant="outline" onClick={() => setOpenField("email")}>
-              Change
-            </Button>
-          </div>
+              {/* Name */}
+              <div className="flex items-center justify-between py-4 border-b">
+                <div>
+                  <p className="font-medium text-lg">Name</p>
+                  <p className="text-sm text-muted-foreground">{user.name}</p>
+                </div>
+                <Button variant="outline" onClick={() => setOpenField("name")}>
+                  Change
+                </Button>
+              </div>
 
-          {/* Change Password */}
-          <div className="pt-6">
-            <Button className="w-full h-12 text-md" onClick={() => setOpenField("password")}>
-              Change Password
-            </Button>
-          </div>
+              {/* Email */}
+              <div className="flex items-center justify-between py-4 border-b">
+                <div>
+                  <p className="font-medium text-lg">Email</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
+                <Button variant="outline" onClick={() => setOpenField("email")}>
+                  Change
+                </Button>
+              </div>
 
-          {/* Delete Account */}
-          <div className="pt-2">
-            <Button variant="destructive" className="w-full h-12 text-md">
-              Delete Account
-            </Button>
-          </div>
+              {/* Change Password */}
+              <div className="pt-6">
+                <Button className="w-full h-12 text-md" onClick={() => setOpenField("password")}>
+                  Change Password
+                </Button>
+              </div>
 
-        </CardContent>
-      </Card>
+              {/* Delete Account */}
+              <div className="pt-2">
+                <Button variant="destructive" className="w-full h-12 text-md">
+                  Delete Account
+                </Button>
+              </div>
 
-      <EditDialog openField={openField} setOpenField={setOpenField} />
-    </div>
-  </SidebarInset>
-</SidebarProvider>
+            </CardContent>
+          </Card>
 
+          <EditDialog openField={openField} setOpenField={setOpenField} />
+        </div>
+
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
 
 
 // ========================================================================
-// EDIT DIALOG MODAL
+// EDIT DIALOG (PATCH /api/user WITH BEARER TOKEN)
 // ========================================================================
 function EditDialog({
   openField,
@@ -158,11 +146,54 @@ function EditDialog({
   openField: "name" | "email" | "password" | null;
   setOpenField: (v: any) => void;
 }) {
+  const [value, setValue] = useState("");
+
   const labelMap: any = {
     name: "Change Name",
     email: "Change Email",
     password: "Change Password",
   };
+
+  async function handleSave() {
+    if (!openField) return;
+
+    const token = useAuthStore.getState().token;
+
+    if (!token) {
+      alert("No token available. Please log in again.");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:8080/api/user", {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          [openField]: value,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert("Error: " + (data.error ?? "Failed to update user"));
+        return;
+      }
+
+      alert("User updated successfully!");
+      sessionStorage.setItem("name", value);
+
+      setOpenField(null);
+      setValue("");
+
+    } catch (e: any) {
+      alert("Network error: " + e.message);
+    }
+  }
 
   return (
     <Dialog open={!!openField} onOpenChange={() => setOpenField(null)}>
@@ -172,21 +203,25 @@ function EditDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {openField !== "password" ? (
-            <Input placeholder={`Enter new ${openField}`} />
-          ) : (
-            <>
-              <Input type="password" placeholder="Current Password" />
-              <Input type="password" placeholder="New Password" />
-            </>
-          )}
+          <Input
+            type={openField === "password" ? "password" : "text"}
+            placeholder={
+              openField === "password"
+                ? "Enter new password"
+                : openField === "email"
+                ? "Enter new email"
+                : "Enter new name"
+            }
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpenField(null)}>
             Cancel
           </Button>
-          <Button>Save</Button>
+          <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
