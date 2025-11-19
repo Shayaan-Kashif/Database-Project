@@ -9,7 +9,8 @@ import (
 	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
 	"github.com/google/uuid"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
+	
 )
 
 func (cfg *apiConfig) signUp(res http.ResponseWriter, req *http.Request) {
@@ -138,7 +139,7 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 			break
 		}
 
-		var pqErr *pq.Error
+		var pqErr *pgconn.PgError
 		if !(errors.As(err, &pqErr) && pqErr.Code == "23505") { //database connection error
 			respondWithError(res, http.StatusInternalServerError, err.Error())
 			return

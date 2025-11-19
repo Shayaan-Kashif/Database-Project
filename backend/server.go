@@ -13,7 +13,10 @@ import (
 	"github.com/Shayaan-Kashif/Database-Project/internal/auth"
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
 	"github.com/joho/godotenv"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgconn"
+	
 )
 
 type apiConfig struct {
@@ -34,11 +37,20 @@ func main() {
 	godotenv.Load()
 
 	dbURL := os.Getenv("DB_URL")
-	db, err := sql.Open("postgres", dbURL)
+	config, err := pgx.ParseConfig(dbURL)
+	
 	if err != nil {
-		fmt.Println("Cannot load database")
-		return
+		    log.Fatalf("Failed to parse DB_URL: %v", err)
 	}
+	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+
+	db := stdlib.OpenDB(*config)
+	defer db.Close()
+
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
+
 
 	apiConfig := apiConfig{
 		dbQueries: database.New(db),
@@ -194,10 +206,10 @@ func (cfg *apiConfig) authMiddleWare(next http.Handler) http.Handler {
 }
 
 func handlePgConstraints(err error) (bool, string) {
-	var pqErr *pq.Error
+	var pgErr *pgconn.PgError
 	//postgres violation codes: unique, foreign key, check, not null violation in that order
-	if errors.As(err, &pqErr) && (pqErr.Code == "23505" || pqErr.Code == "23503" || pqErr.Code == "23514" || pqErr.Code == "23502") {
-		return true, pqErr.Message
+	if errors.As(err, &pgErr) && (pgErr.Code == "23505" || pgErr.Code == "23503" || pgErr.Code == "23514" || pgErr.Code == "23502") {
+		return true, pgErr.Message
 	}
 
 	return false, ""
