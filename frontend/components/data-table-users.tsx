@@ -20,6 +20,8 @@ type User = {
   parkingLotID: string | null;
   createdAt: string;
   updatedAt: string;
+  totalReviews?: number; 
+  totalLogs?: number;    
 };
 
 export default function DataTableUsers() {
@@ -27,30 +29,49 @@ export default function DataTableUsers() {
   const [loading, setLoading] = useState(false);
 
   const token = useAuthStore((s) => s.token);
-  console.log("USERS PAGE TOKEN:", token);
 
-  // ------------------------------
-  // LOAD ALL USERS (requires token)
-  // ------------------------------
   useEffect(() => {
     async function loadUsers() {
       setLoading(true);
 
       try {
-        const res = await fetch("http://localhost:8080/api/users", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
+        const [usersRes, reviewsRes, logsRes] = await Promise.all([
+          fetch("http://localhost:8080/api/users", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          }),
+          fetch("http://localhost:8080/api/countOfReviewsPerUser", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          }),
+          fetch("http://localhost:8080/api/countOfLogsPerUser", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          }),
+        ]);
+
+        const usersData = await usersRes.json();
+        const reviewsData = await reviewsRes.json();
+        const logsData = await logsRes.json();     
+
+        const merged = usersData.map((u: User) => {
+          const reviewMatch = reviewsData.find((r: any) => r.id === u.id);
+          const logMatch = logsData.find((l: any) => l.id === u.id);
+
+          return {
+            ...u,
+            totalReviews: reviewMatch?.totalReviews ?? 0,
+            totalLogs: logMatch?.totalEntries ?? 0,
+          };
         });
 
-        const data = await res.json();
-
-        if (Array.isArray(data)) setUsers(data);
-        else setUsers([]);
+        setUsers(merged);
       } catch (e) {
         console.error("Failed to load users:", e);
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -72,6 +93,8 @@ export default function DataTableUsers() {
               <TableHead>Email</TableHead>
               <TableHead className="text-center">Role</TableHead>
               <TableHead className="text-center">Parking Lot</TableHead>
+              <TableHead className="text-center">Number of Reviews</TableHead>
+              <TableHead className="text-center">Number of Logs</TableHead>
               <TableHead className="text-center">Created</TableHead>
               <TableHead className="text-center">Updated</TableHead>
             </TableRow>
@@ -100,6 +123,12 @@ export default function DataTableUsers() {
                   <TableCell className="text-center">
                     {u.parkingLotID ?? "N/A"}
                   </TableCell>
+
+                  {/* Display review count */}
+                  <TableCell className="text-center">{u.totalReviews}</TableCell>
+
+                  {/* Display log count */}
+                  <TableCell className="text-center">{u.totalLogs}</TableCell>
 
                   <TableCell className="text-center">
                     {new Date(u.createdAt).toLocaleString()}
