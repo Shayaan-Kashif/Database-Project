@@ -34,14 +34,10 @@ import {
 export default function AccountPage() {
   const hydrated = useHydration();
   const router = useRouter();
-
   const token = useAuthStore((s) => s.token);
 
   const [user, setUser] = useState<any | null>(null);
-
-  // ⭐ lotID → lotName map
   const [lotMap, setLotMap] = useState<Record<string, string>>({});
-
   const [openField, setOpenField] = useState<null | "name" | "email" | "password">(null);
 
   // ===================================================
@@ -50,18 +46,22 @@ export default function AccountPage() {
   useEffect(() => {
     if (!hydrated) return;
 
-    async function verify() {
-      const stored = useAuthStore.getState().token;
+    async function ensureAuth() {
+      let storedToken = useAuthStore.getState().token;
 
-      if (!stored) {
-        const ok = await tryRefresh();
-        if (!ok) {
-          router.replace("/login");
-        }
+      if (storedToken) return;
+
+      const ok = await tryRefresh();
+
+      if (!ok) {
+        router.replace("/login");
+        return;
       }
+
+      storedToken = useAuthStore.getState().token;
     }
 
-    verify();
+    ensureAuth();
   }, [hydrated, router]);
 
   // ===================================================
@@ -89,7 +89,7 @@ export default function AccountPage() {
   }, [token]);
 
   // ===================================================
-  // LOAD PARKING LOTS AND BUILD MAP
+  // LOAD PARKING LOTS
   // ===================================================
   useEffect(() => {
     async function loadLots() {
@@ -119,6 +119,43 @@ export default function AccountPage() {
     loadLots();
   }, []);
 
+  // ===================================================
+  // DELETE ACCOUNT HANDLER
+  // ===================================================
+  async function handleDelete() {
+    const token = useAuthStore.getState().token;
+    if (!token) return alert("You are not logged in.");
+
+    const confirmDelete = confirm("Are you sure you want to delete your account? This cannot be undone.");
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch("http://localhost:8080/api/user", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert("Error: " + (data.error || "Failed to delete account"));
+        return;
+      }
+
+      // clear JWT + session storage
+      useAuthStore.getState().setToken(null);
+      sessionStorage.removeItem("name");
+
+      alert("Account deleted successfully.");
+
+      router.replace("/login");
+    } catch (err) {
+      console.error(err);
+      alert("Network error");
+    }
+  }
+
   if (!hydrated || !user) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -127,11 +164,9 @@ export default function AccountPage() {
     );
   }
 
-  // ✔ Get readable lot name
-  const lotDisplay =
-    user.parkingLotID
-      ? lotMap[user.parkingLotID] || user.parkingLotID
-      : "Not Parked";
+  const lotDisplay = user.parkingLotID
+    ? lotMap[user.parkingLotID] || user.parkingLotID
+    : "Not Parked";
 
   return (
     <SidebarProvider>
@@ -150,8 +185,6 @@ export default function AccountPage() {
             </CardHeader>
 
             <CardContent className="space-y-10 mt-4">
-
-              {/* Name */}
               <AccountField
                 label="Name"
                 value={user.name}
@@ -159,7 +192,6 @@ export default function AccountPage() {
                 onOpen={setOpenField}
               />
 
-              {/* Email */}
               <AccountField
                 label="Email"
                 value={user.email}
@@ -167,7 +199,6 @@ export default function AccountPage() {
                 onOpen={setOpenField}
               />
 
-              {/* Role */}
               <div className="flex items-center justify-between py-4 border-b">
                 <div>
                   <p className="font-medium text-lg">Role</p>
@@ -175,17 +206,13 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              {/* Parking Lot Display with Mapping */}
               <div className="flex items-center justify-between py-4 border-b">
                 <div>
                   <p className="font-medium text-lg">Parking Lot</p>
-                  <p className="text-sm text-muted-foreground">
-                    {lotDisplay}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{lotDisplay}</p>
                 </div>
               </div>
 
-              {/* Dates */}
               <DateField label="Created At" value={user.createdAt} />
               <DateField label="Updated At" value={user.updatedAt} />
 
@@ -199,7 +226,11 @@ export default function AccountPage() {
               </div>
 
               <div className="pt-2">
-                <Button variant="destructive" className="w-full h-12 text-md">
+                <Button
+                  variant="destructive"
+                  className="w-full h-12 text-md"
+                  onClick={handleDelete}
+                >
                   Delete Account
                 </Button>
               </div>
@@ -287,7 +318,6 @@ function EditDialog({ openField, setOpenField }: any) {
       setOpenField(null);
       setValue("");
 
-      // full reload (requested)
       window.location.reload();
     } catch (err) {
       alert("Network error");
