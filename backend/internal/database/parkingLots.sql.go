@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -37,6 +38,15 @@ func (q *Queries) CreateParkingLot(ctx context.Context, arg CreateParkingLotPara
 		&i.Occupiedslots,
 	)
 	return i, err
+}
+
+const deleteParkingLot = `-- name: DeleteParkingLot :execresult
+DELETE FROM parkinglots
+WHERE id = $1
+`
+
+func (q *Queries) DeleteParkingLot(ctx context.Context, id uuid.UUID) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteParkingLot, id)
 }
 
 const getParkingLotFromID = `-- name: GetParkingLotFromID :one
@@ -103,5 +113,23 @@ type UpdateOccupiedSlotParams struct {
 
 func (q *Queries) UpdateOccupiedSlot(ctx context.Context, arg UpdateOccupiedSlotParams) error {
 	_, err := q.db.ExecContext(ctx, updateOccupiedSlot, arg.Occupiedslots, arg.ID)
+	return err
+}
+
+const updateParkingLot = `-- name: UpdateParkingLot :exec
+UPDATE parkinglots
+SET name = $1,
+slots = $2
+WHERE id = $3
+`
+
+type UpdateParkingLotParams struct {
+	Name  string
+	Slots int32
+	ID    uuid.UUID
+}
+
+func (q *Queries) UpdateParkingLot(ctx context.Context, arg UpdateParkingLotParams) error {
+	_, err := q.db.ExecContext(ctx, updateParkingLot, arg.Name, arg.Slots, arg.ID)
 	return err
 }

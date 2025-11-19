@@ -130,3 +130,122 @@ func (cfg *apiConfig) getParkingLotFromID(res http.ResponseWriter, req *http.Req
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) deleteParkingLot(res http.ResponseWriter, req *http.Request) {
+	role := req.Context().Value(ctxRole).(string)
+
+	if role != "admin" {
+		respondWithError(res, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	sqlResult, err := cfg.dbQueries.DeleteParkingLot(req.Context(), lotID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rowsAffected, _ := sqlResult.RowsAffected()
+	if rowsAffected == 0 {
+		respondWithError(res, http.StatusNotFound, "No lot with this ID was found")
+		return
+	}
+
+	responseStruct := struct {
+		Status string `json:"status"`
+	}{"The parking lot has been deleted"}
+
+	respondWithJSON(res, http.StatusOK, responseStruct)
+}
+
+func (cfg *apiConfig) updateParkingLot(res http.ResponseWriter, req *http.Request) {
+	role := req.Context().Value(ctxRole).(string)
+
+	if role != "admin" {
+		respondWithError(res, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	reqStruct := struct {
+		Name  *string `json:"name"`
+		Slots *int32  `json:"slots"`
+	}{}
+
+	if err := decodeJSON(req, &reqStruct); err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if reqStruct.Name == nil && reqStruct.Slots == nil {
+		respondWithError(res, http.StatusBadRequest, "modification request invalid")
+		return
+	}
+
+	currentToModifiedLot, err := cfg.dbQueries.GetParkingLotFromID(req.Context(), lotID)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			respondWithError(res, http.StatusBadRequest, "no lot exist for that parkinglotID")
+			return
+		}
+
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if reqStruct.Name != nil {
+		if *reqStruct.Name == "" {
+			respondWithError(res, http.StatusBadRequest, "name cannot be empty")
+			return
+		}
+		currentToModifiedLot.Name = *reqStruct.Name
+	}
+
+	if reqStruct.Slots != nil {
+		if *reqStruct.Slots < currentToModifiedLot.Occupiedslots {
+			respondWithError(res, http.StatusBadRequest, "slots cannot be smaller than occupied slots")
+			return
+		}
+		currentToModifiedLot.Slots = *reqStruct.Slots
+	}
+
+	err = cfg.dbQueries.UpdateParkingLot(req.Context(), database.UpdateParkingLotParams{
+		Name:  currentToModifiedLot.Name,
+		Slots: currentToModifiedLot.Slots,
+		ID:    lotID,
+	})
+
+	hasPgErr, message := handlePgConstraints(err)
+
+	if hasPgErr {
+		respondWithError(res, http.StatusBadRequest, message)
+		return
+	}
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responceStruct := struct {
+		Status string `json:"status"`
+	}{"The parking lot has been modified"}
+
+	respondWithJSON(res, http.StatusOK, responceStruct)
+
+}
