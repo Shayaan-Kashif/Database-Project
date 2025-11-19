@@ -1,10 +1,9 @@
-
 /**
  * Helper function to get the access token from cookies
  */
 function getAccessToken(): string | null {
   if (typeof document === 'undefined') return null;
-  
+
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
     const [name, value] = cookie.trim().split('=');
@@ -21,30 +20,44 @@ function getAccessToken(): string | null {
  */
 function deleteCookie(name: string, path: string = '/') {
   if (typeof document === 'undefined') return;
+
   // Delete cookie by setting it to expire in the past
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`;
-  // Also try without path
+  // Try fallback path
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
 
 /**
- * Logs out the user by:
- * 1. Deleting client-side cookies (access_token if it exists)
- * 2. Redirecting to the login page
- * 
- * Note: The refresh_token cookie is HttpOnly and cannot be deleted from frontend.
- * It will expire naturally or can be cleared by the backend on next request.
+ * LOGOUT FUNCTION
+ * ----------------
+ * - Calls backend /api/logout to clear the refresh token (HttpOnly cookie)
+ * - Deletes client-side access_token
+ * - Clears session data
+ * - Redirects user to /login
  */
-export function logout(): void {
-  // Delete access_token cookie if it exists (client-side cookie)
-  deleteCookie('access_token');
+export async function logout(): Promise<void> {
+  try {
+    // 1️⃣ Tell backend to revoke the refresh token & clear cookie
+    await fetch("http://localhost:8080/api/logout", {
+      method: "POST",
+      credentials: "include", // sends the HttpOnly refresh token
+    });
+  } catch (err) {
+    console.error("Failed to call /api/logout:", err);
+    // Still continue with client-side cleanup
+  }
+
+  // 2️⃣ Remove client-side access_token
+  deleteCookie("access_token");
+  deleteCookie("refresh_token");
+
+  // 3️⃣ Clear sessionStorage
   sessionStorage.removeItem("name");
   sessionStorage.removeItem("role");
 
-  
-  // Redirect to login page
-  if (typeof window !== 'undefined') {
-    window.location.href = '/login';
+  // 4️⃣ Redirect user to login page
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
   }
 }
 
@@ -58,19 +71,18 @@ export async function authenticatedFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const token = getAccessToken();
-  
+
   const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
-  
+  headers.set("Content-Type", "application/json");
+
   // Add Authorization header if token exists
   if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+    headers.set("Authorization", `Bearer ${token}`);
   }
-  
+
   return fetch(url, {
     ...options,
     headers,
-    credentials: 'include', // Automatically sends cookies (refresh_token)
+    credentials: "include", // sends refresh_token
   });
 }
-

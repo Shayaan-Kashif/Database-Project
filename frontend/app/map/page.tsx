@@ -215,7 +215,6 @@ export default function Map() {
     try {
       const res = await fetch("http://localhost:8080/api/user", {
         cache: "no-store",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
