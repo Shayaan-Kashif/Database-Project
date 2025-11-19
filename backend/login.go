@@ -157,7 +157,7 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 		HttpOnly: true,
 		Secure:   false, //only for dev side, true for production
 		SameSite: http.SameSiteLaxMode,
-		Path:     "/api/refresh",
+		Path:     "/api",
 		MaxAge:   3600,
 	})
 
@@ -193,7 +193,7 @@ func (cfg *apiConfig) logout(res http.ResponseWriter, req *http.Request) {
 		HttpOnly: true,
 		Secure:   false, //only for dev side, true for production
 		SameSite: http.SameSiteLaxMode,
-		Path:     "/api/refresh",
+		Path:     "/api",
 		MaxAge:   -1,
 	})
 
