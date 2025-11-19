@@ -81,6 +81,7 @@ func main() {
 	serverMux.Handle("GET /api/parkingLogs", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getParkingLogsFromUserID)))
 	serverMux.Handle("GET /api/parkingLogsAll", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.getAllParkingLogs)))
 	serverMux.HandleFunc("GET /api/parkingHistory/{lotID}", apiConfig.getParkingHistory)
+	serverMux.Handle("DELETE /api/user", apiConfig.authMiddleWare(http.HandlerFunc(apiConfig.deleteUser)))
 
 	fmt.Println("server is running on http://localhost:8080")
 

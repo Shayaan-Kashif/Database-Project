@@ -301,3 +301,26 @@ func (cfg *apiConfig) getAllUsers(res http.ResponseWriter, req *http.Request) {
 
 	respondWithJSON(res, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) deleteUser(res http.ResponseWriter, req *http.Request) {
+	userID := req.Context().Value(ctxUserID).(uuid.UUID)
+
+	sqlResult, err := cfg.dbQueries.DeleteUser(req.Context(), userID)
+
+	if err != nil {
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rowsAffected, _ := sqlResult.RowsAffected()
+	if rowsAffected == 0 {
+		respondWithError(res, http.StatusNotFound, "No user with this ID was found")
+		return
+	}
+
+	responseStruct := struct {
+		Status string `json:"status"`
+	}{"The user has been deleted"}
+
+	respondWithJSON(res, http.StatusOK, responseStruct)
+}

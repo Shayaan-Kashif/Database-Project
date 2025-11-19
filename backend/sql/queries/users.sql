@@ -28,3 +28,6 @@ WHERE id = $2;
 
 -- name: GetAllUsers :many
 SELECT * FROM users;
+
+-- name: DeleteUser :execresult
+DELETE FROM users WHERE id = $1;
