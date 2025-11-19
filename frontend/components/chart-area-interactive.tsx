@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import * as React from "react";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Card,
   CardAction,
@@ -11,13 +11,14 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
+
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart"
+} from "@/components/ui/chart";
 
 import {
   Select,
@@ -25,7 +26,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
+
+import { useAuthStore } from "@/app/stores/useAuthStore";
 
 // ----------------------------
 // LOTS AVAILABLE
@@ -37,87 +40,102 @@ const lots = [
   { id: "41061519-b640-4921-b02a-0e886a48eb60", name: "Founders 4" },
   { id: "dc8b34f8-5822-4391-b7ef-13061fb7d0ee", name: "Founders 5" },
   { id: "3cb5c1f0-40ea-4aad-b265-3af01fc1e9b4", name: "Commencement" },
-]
+];
 
 // ----------------------------
-// CHART CONFIG (same)
+// CHART CONFIG
 // ----------------------------
 const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--primary)",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig
+  entries: { label: "Entries", color: "var(--primary)" },
+} satisfies ChartConfig;
 
 // ----------------------------
 // MAIN COMPONENT
 // ----------------------------
 export function ChartAreaInteractive() {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile();
+  const token = useAuthStore((s) => s.token);
 
-  const [selectedLot, setSelectedLot] = React.useState(lots[0].id)
-  const [history, setHistory] = React.useState<any[]>([])
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
+  const [selectedLot, setSelectedLot] = React.useState(lots[0].id);
+  const [history, setHistory] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const firstLoad = React.useRef(true);
 
   // ----------------------------
-  // FETCH LOT HISTORY ON CHANGE
+  // FETCH FUNCTION (single-line graph)
+  // ----------------------------
+  async function fetchHistory(lotID: string, authToken: string) {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/parkingHistory/${lotID}`,
+        {
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+
+      const json = await res.json();
+
+      // Expected shape: [{ date: "YYYY-MM-DD", entries: 3 }]
+      const normalized = json.map((row: any) => ({
+        date: row.date,
+        entries: row.entries,
+      }));
+
+      setHistory(normalized);
+    } catch (err) {
+      setError(String(err));
+      setHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ----------------------------
+  // EFFECT – DELAY ONLY ON FIRST LOAD
   // ----------------------------
   React.useEffect(() => {
-    async function fetchHistory() {
-      setLoading(true)
-      setError(null)
+    if (!token) return;
 
-      try {
-        const res = await fetch(
-          `http://localhost:8080/api/parkingHistory/${selectedLot}`,
-          { credentials: "include" }
-        );
-
-        if (!res.ok) {
-          throw new Error(`Failed: ${res.status}`)
-        }
-
-        const data = await res.json()
-
-        // EXPECTED FORMAT:
-        // { date: "...", desktop: X, mobile: Y }
-        setHistory(Array.isArray(data) ? data : [])
-      } catch (err) {
-        setError(String(err))
-      } finally {
-        setLoading(false)
+    async function run() {
+      if (firstLoad.current) {
+        await new Promise((res) => setTimeout(res, 500));
+        firstLoad.current = false;
       }
+
+      fetchHistory(selectedLot, token);
     }
 
-    fetchHistory()
-  }, [selectedLot])
+    run();
+  }, [selectedLot, token]);
 
+  // ----------------------------
+  // RENDER
+  // ----------------------------
   return (
     <Card className="@container/card">
       <CardHeader>
         <CardTitle>Parking Lot History</CardTitle>
-        <CardDescription>Select a parking lot to view history</CardDescription>
+        <CardDescription>Daily entry count for each lot</CardDescription>
 
-        {/* ---------------------------- */}
-        {/* LOT DROPDOWN MENU            */}
-        {/* ---------------------------- */}
         <CardAction>
           <Select value={selectedLot} onValueChange={setSelectedLot}>
             <SelectTrigger className="w-60" size="sm">
               <SelectValue placeholder="Choose a Lot" />
             </SelectTrigger>
+
             <SelectContent>
               {lots.map((lot) => (
-                <SelectItem
-                  key={lot.id}
-                  value={lot.id}
-                  className="rounded-lg"
-                >
+                <SelectItem key={lot.id} value={lot.id}>
                   {lot.name}
                 </SelectItem>
               ))}
@@ -127,15 +145,14 @@ export function ChartAreaInteractive() {
       </CardHeader>
 
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+
         {loading && (
-          <div className="text-muted-foreground text-sm">
-            Loading history...
-          </div>
+          <div className="text-muted-foreground text-sm">Loading data…</div>
         )}
 
-        {error && (
+        {error && !loading && (
           <div className="text-destructive text-sm">
-            Failed to load history: {error}
+            Failed: {error}
           </div>
         )}
 
@@ -146,19 +163,12 @@ export function ChartAreaInteractive() {
         )}
 
         {!loading && !error && history.length > 0 && (
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-auto h-[250px] w-full"
-          >
+          <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <AreaChart data={history}>
               <defs>
-                <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-desktop)" stopOpacity={1} />
-                  <stop offset="95%" stopColor="var(--color-desktop)" stopOpacity={0.1} />
-                </linearGradient>
-                <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-mobile)" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="var(--color-mobile)" stopOpacity={0.1} />
+                <linearGradient id="fillEntries" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-entries)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--color-entries)" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
 
@@ -168,8 +178,8 @@ export function ChartAreaInteractive() {
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                tickMargin={8}
                 minTickGap={32}
+                tickMargin={8}
                 tickFormatter={(value) =>
                   new Date(value).toLocaleDateString("en-US", {
                     month: "short",
@@ -182,35 +192,29 @@ export function ChartAreaInteractive() {
                 cursor={false}
                 content={
                   <ChartTooltipContent
+                    indicator="dot"
                     labelFormatter={(value) =>
                       new Date(value).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                       })
                     }
-                    indicator="dot"
                   />
                 }
               />
 
               <Area
-                dataKey="mobile"
-                type="natural"
-                fill="url(#fillMobile)"
-                stroke="var(--color-mobile)"
-                stackId="a"
-              />
-              <Area
-                dataKey="desktop"
-                type="natural"
-                fill="url(#fillDesktop)"
-                stroke="var(--color-desktop)"
-                stackId="a"
+                dataKey="entries"   // 👈 FIXED
+                type="monotone"
+                fill="url(#fillEntries)"
+                stroke="var(--color-entries)"
+                dot={{ r: 4 }}       // 👈 shows single points
+                strokeWidth={2}
               />
             </AreaChart>
           </ChartContainer>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

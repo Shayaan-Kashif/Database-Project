@@ -1,7 +1,5 @@
 'use client';
 
-
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -39,7 +37,6 @@ import { IconArrowLeft, IconX } from "@tabler/icons-react";
 import { useAuthStore } from "@/app/stores/useAuthStore";
 
 import { tryRefresh } from "@/lib/tryRefresh"
-
 
 // Fix missing marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -79,7 +76,6 @@ interface Review {
 }
 
 const parkingLots: ParkingLot[] = [
-  // ... your lot data unchanged ...
   {
     id: 'Founders 5',
     coordinates: [
@@ -105,36 +101,37 @@ const parkingLots: ParkingLot[] = [
     color: 'green',
   },
 
+  { id: 'Founders 4',
+    coordinates: [
+      [43.9500923, -78.8985136],
+      [43.9502584, -78.8976673],
+      [43.9496380, -78.8973582],
+      [43.9493981, -78.8982373],
+    ],
+    color: 'orange',
+  },
 
-{ id: 'Founders 4', 
-  coordinates: [ 
-    [43.9500923, -78.8985136], 
-    [43.9502584, -78.8976673], 
-    [43.9496380, -78.8973582], 
-    [43.9493981, -78.8982373],
-   ], 
-   color: 'orange', },
+  { id: 'Founders 3',
+    coordinates: [
+      [43.9483961, -78.8987647],
+      [43.9484897, -78.8983637],
+      [43.9478795, -78.8981371],
+      [43.9478032, -78.8985153],
+    ],
+    color: 'black',
+  },
 
- { id: 'Founders 3', 
-  coordinates: [ 
-    [43.9483961, -78.8987647], 
-    [43.9484897, -78.8983637], 
-    [43.9478795, -78.8981371], 
-    [43.9478032, -78.8985153], 
-  ], 
-  color: 'black', }, 
-
- { id: 'Founders 1', 
-  coordinates: [ 
-    [43.9460000, -78.8956993], 
-    [43.9460823, -78.8953781], 
-    [43.9449244, -78.8948762], 
-    [43.9448746, -78.8942083], 
-    [43.9446393, -78.8940819], 
-    [43.9444411, -78.8949888], 
-  ], 
-  color: 'purple', },
-
+  { id: 'Founders 1',
+    coordinates: [
+      [43.9460000, -78.8956993],
+      [43.9460823, -78.8953781],
+      [43.9449244, -78.8948762],
+      [43.9448746, -78.8942083],
+      [43.9446393, -78.8940819],
+      [43.9444411, -78.8949888],
+    ],
+    color: 'purple',
+  },
 
   {
     id: 'Commencement',
@@ -152,7 +149,6 @@ const parkingLots: ParkingLot[] = [
   },
 ];
 
-
 export default function Map() {
   const router = useRouter();
 
@@ -160,29 +156,36 @@ export default function Map() {
   const name = useAuthStore((state) => state.name);
   const role = useAuthStore((state) => state.role);
 
+  console.log("Store token:", token);
+  console.log("Store role:", role);
+  console.log("Store name:", name);
 
-
-   console.log("Store token:", token);
-   console.log("Store role:", role);
-   console.log("Store name:", name);
-
-  
-    useEffect(() => {
-      const checkAuth = async () => {
-        if (!token) {
-          const ok = await tryRefresh();
-          if (!ok) {
-            router.push("/login");
-            return;
-          }
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!token) {
+        const ok = await tryRefresh();
+        if (!ok) {
+          router.push("/login");
+          return;
         }
-      };
-  
-      checkAuth();
-    }, [token, router]);
-  
+      }
+    };
+
+    checkAuth();
+  }, [token, router]);
 
 
+
+    // Delay rendering for smoother loading
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setReady(true);
+    }, 250); // 250ms delay
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -195,15 +198,42 @@ export default function Map() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
 
-  // ⭐ NEW STATE FOR REVIEW POPUP
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewDescription, setReviewDescription] = useState("");
   const [reviewScore, setReviewScore] = useState(5);
 
-  const handleLotClick = (lotId: string) => {
+  const [userParkingLotId, setUserParkingLotId] = useState<string | null>(null);
+  const [userLoading, setUserLoading] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+
+  const handleLotClick = async (lotId: string) => {
     setSelectedLot(lotId);
     setIsSheetOpen(true);
+
+    setUserLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/api/user", {
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserParkingLotId(data.parkingLotID || null);
+        setCurrentUserName(data.name || null);
+      } else {
+        setUserParkingLotId(null);
+      }
+    } catch {
+      setUserParkingLotId(null);
+    } finally {
+      setUserLoading(false);
+    }
   };
 
   // Fetch lot details
@@ -248,7 +278,7 @@ export default function Map() {
     };
   }, [selectedLot, isSheetOpen]);
 
-  // Fetch reviews after lotDetails loads
+  // Fetch reviews
   useEffect(() => {
     let aborted = false;
 
@@ -290,11 +320,8 @@ export default function Map() {
     lotDetails?.ocupiedSlots ??
     0;
 
-  // ⭐ NEW: SUBMIT REVIEW HANDLER
   async function submitReview() {
     if (!lotDetails) return;
-
-     
 
     const body = {
       parkingLotID: lotDetails.id,
@@ -303,20 +330,16 @@ export default function Map() {
       score: reviewScore,
     };
 
-    //const accessToken = getCookie("access_token");
-
-
     try {
-
-    const res = await fetch("http://localhost:8080/api/reviews", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,   // ⭐ ADDED
-      },
-      body: JSON.stringify(body),
-    });
+      const res = await fetch("http://localhost:8080/api/reviews", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
 
       if (!res.ok) {
         const err = await res.json();
@@ -324,13 +347,11 @@ export default function Map() {
         return;
       }
 
-      // Close dialog + clear fields
       setReviewDialogOpen(false);
       setReviewTitle("");
       setReviewDescription("");
       setReviewScore(5);
 
-      // Refresh reviews
       const refreshed = await fetch(
         `http://localhost:8080/api/reviews/${lotDetails.id}`,
         { credentials: "include" }
@@ -342,10 +363,85 @@ export default function Map() {
     }
   }
 
+  async function deleteReview(userID: string, parkingLotID: string) {
+    try {
+      const res = await fetch("http://localhost:8080/api/reviews", {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userID,
+          parkingLotID,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + err.error);
+        return;
+      }
+
+      const data = await res.json();
+      alert(data.status);
+
+      const refreshed = await fetch(
+        `http://localhost:8080/api/reviews/${parkingLotID}`,
+        { credentials: "include" }
+      );
+      setReviews(await refreshed.json());
+
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function handleParkHere() {
+    if (!lotDetails) return;
+
+    const isCurrentlyParkedHere = userParkingLotId === lotDetails.id;
+    const type = isCurrentlyParkedHere ? "exit" : "entry";
+
+    try {
+      const res = await fetch("http://localhost:8080/api/park", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          parkingLotID: lotDetails.id,
+          type,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + (err.error ?? "Failed to update parking status"));
+        return;
+      }
+
+      const data = await res.json();
+      alert(data.status ?? "Parking status updated");
+
+      if (type === "entry") {
+        setUserParkingLotId(lotDetails.id);
+      } else {
+        setUserParkingLotId(null);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+
+
   return (
     <div className="relative h-screen w-full rounded-lg overflow-hidden">
-      
-      {/* Back Button */}
+
       <div className="absolute top-[85px] left-4 z-[1000]">
         <Button
           onClick={() => router.push('/dashboard')}
@@ -357,7 +453,6 @@ export default function Map() {
         </Button>
       </div>
 
-      {/* Sidebar */}
       <Sheet
         open={isSheetOpen}
         onOpenChange={(open) => {
@@ -366,6 +461,10 @@ export default function Map() {
             setSelectedLot(null);
             setLotDetails(null);
             setReviews(null);
+
+            // ⭐ NEW: Reset parking state on close
+            setUserParkingLotId(null);
+            setCurrentUserName(null);
           }
         }}
       >
@@ -380,7 +479,6 @@ export default function Map() {
                 </SheetDescription>
               </SheetHeader>
 
-              {/* Lot Details */}
               <div className="mt-4 space-y-3">
                 {loading && <p>Loading...</p>}
                 {error && <p className="text-red-600">{error}</p>}
@@ -390,18 +488,30 @@ export default function Map() {
                     <p>Occupied: {occupied}</p>
                     <p>Available: {Math.max(0, lotDetails.slots - occupied)}</p>
 
-                    {/* ⭐ Replace Reserve Spot button */}
                     <Button
                       className="w-full"
                       onClick={() => setReviewDialogOpen(true)}
                     >
                       Write a Review
                     </Button>
+
+                    {userLoading ? (
+                      <Button disabled className="w-full mt-2">
+                        Loading...
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full mt-2"
+                        variant="outline"
+                        onClick={handleParkHere}
+                      >
+                        {userParkingLotId === lotDetails.id ? "Leave lot" : "Im parked here"}
+                      </Button>
+                    )}
                   </>
                 )}
               </div>
 
-              {/* Reviews Section */}
               <div className="mt-6 pt-4 border-t">
                 <h3 className="text-lg font-semibold mb-2">Reviews</h3>
 
@@ -426,7 +536,6 @@ export default function Map() {
                           <p className="text-lg font-bold mt-1">{rev.title}</p>
                           <p className="font-semibold">{rev.username}</p>
                           <p className="font-medium">⭐ {rev.score}/5</p>
-                          
 
                           {rev.description.Valid && (
                             <p className="text-sm mt-1 whitespace-pre-wrap">
@@ -440,6 +549,35 @@ export default function Map() {
                           <p className="text-xs text-muted-foreground">
                             Updated: {new Date(rev.updatedAt).toLocaleString()}
                           </p>
+
+                          {currentUserName && rev.username === currentUserName && (
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => console.log("Edit coming soon")}
+                              >
+                                Edit
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => console.log("Mark parked coming soon")}
+                              >
+                                I’m Parked?
+                              </Button>
+
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteReview(rev.userID, rev.lotID)}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          )}
+
                         </div>
                       ))}
                     </div>
@@ -452,10 +590,9 @@ export default function Map() {
         </SheetContent>
       </Sheet>
 
-      {/* ⭐ NEW — WRITE REVIEW POPUP DIALOG */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
         <DialogContent className="max-w-md">
-          
+
           <div className="flex justify-between items-center">
             <DialogTitle>Write a Review</DialogTitle>
             <DialogClose>
@@ -507,7 +644,6 @@ export default function Map() {
         </DialogContent>
       </Dialog>
 
-      {/* Map */}
       <MapContainer
         center={[43.948, -78.897]}
         zoom={16}

@@ -23,3 +23,7 @@ WHERE user_id = $4 AND parking_lot_id = $5;
 -- name: GetReviewByID :one
 SELECT * FROM reviews
 WHERE user_id = $1 AND parking_lot_id = $2;
+
+-- name: DeleteReview :execresult
+DELETE FROM reviews
+WHERE user_id = $1 AND parking_lot_id = $2;

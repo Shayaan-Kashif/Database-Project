@@ -33,6 +33,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
+import { usePathname } from "next/navigation";
+
+
+
+
+
 const data = {
   user: {
     name: "shadcn",
@@ -130,6 +136,9 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+
+  const pathname = usePathname();
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -141,7 +150,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <span className="text-base font-semibold">OTU Parking</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
