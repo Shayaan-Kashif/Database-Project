@@ -43,7 +43,6 @@ const data = {
   navMain: [
     { title: "Overview", url: "/dashboard", icon: IconDashboard },
     { title: "Map", url: "/map", icon: IconListDetails },
-    { title: "Analytics", url: "#", icon: IconChartBar },
   ],
   navSecondary: [],
   documents: [
