@@ -376,7 +376,7 @@ func (cfg *apiConfig) updateUser(res http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			respondWithError(res, http.StatusBadRequest, "no review exisit for that user and parkinglotID")
+			respondWithError(res, http.StatusBadRequest, "no user exist for that userID")
 			return
 		}
 
