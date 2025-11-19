@@ -54,6 +54,20 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (Rev
 	return i, err
 }
 
+const deleteReview = `-- name: DeleteReview :execresult
+DELETE FROM reviews
+WHERE user_id = $1 AND parking_lot_id = $2
+`
+
+type DeleteReviewParams struct {
+	UserID       uuid.UUID
+	ParkingLotID uuid.UUID
+}
+
+func (q *Queries) DeleteReview(ctx context.Context, arg DeleteReviewParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteReview, arg.UserID, arg.ParkingLotID)
+}
+
 const getReviewByID = `-- name: GetReviewByID :one
 SELECT user_id, parking_lot_id, title, description, score, created_at, updated_at FROM reviews
 WHERE user_id = $1 AND parking_lot_id = $2

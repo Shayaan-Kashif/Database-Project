@@ -7,6 +7,8 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createParkingLot = `-- name: CreateParkingLot :one
@@ -27,6 +29,24 @@ type CreateParkingLotParams struct {
 
 func (q *Queries) CreateParkingLot(ctx context.Context, arg CreateParkingLotParams) (Parkinglot, error) {
 	row := q.db.QueryRowContext(ctx, createParkingLot, arg.Name, arg.Slots)
+	var i Parkinglot
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slots,
+		&i.Occupiedslots,
+	)
+	return i, err
+}
+
+const getParkingLotFromID = `-- name: GetParkingLotFromID :one
+SELECT id, name, slots, occupiedslots
+FROM parkinglots
+WHERE id = $1
+`
+
+func (q *Queries) GetParkingLotFromID(ctx context.Context, id uuid.UUID) (Parkinglot, error) {
+	row := q.db.QueryRowContext(ctx, getParkingLotFromID, id)
 	var i Parkinglot
 	err := row.Scan(
 		&i.ID,
@@ -68,4 +88,20 @@ func (q *Queries) GetParkingLots(ctx context.Context) ([]Parkinglot, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateOccupiedSlot = `-- name: UpdateOccupiedSlot :exec
+UPDATE parkinglots
+SET occupiedSlots = occupiedSlots + $1
+WHERE id = $2
+`
+
+type UpdateOccupiedSlotParams struct {
+	Occupiedslots int32
+	ID            uuid.UUID
+}
+
+func (q *Queries) UpdateOccupiedSlot(ctx context.Context, arg UpdateOccupiedSlotParams) error {
+	_, err := q.db.ExecContext(ctx, updateOccupiedSlot, arg.Occupiedslots, arg.ID)
+	return err
 }

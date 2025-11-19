@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/Shayaan-Kashif/Database-Project/internal/database"
@@ -69,8 +70,16 @@ func (cfg *apiConfig) createParkingLot(res http.ResponseWriter, req *http.Reques
 	})
 
 	if err != nil {
+
+		hasPgErr, message := handlePgConstraints(err)
+		if hasPgErr {
+			respondWithError(res, http.StatusBadRequest, message)
+			return
+		}
+
 		respondWithError(res, http.StatusInternalServerError, err.Error())
 		return
+
 	}
 
 	responseStruct := struct {
@@ -86,4 +95,38 @@ func (cfg *apiConfig) createParkingLot(res http.ResponseWriter, req *http.Reques
 	}
 
 	respondWithJSON(res, http.StatusCreated, responseStruct)
+}
+
+func (cfg *apiConfig) getParkingLotFromID(res http.ResponseWriter, req *http.Request) {
+	lotID, err := uuid.Parse(req.PathValue("lotID"))
+
+	if err != nil {
+		respondWithError(res, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	parkingLotDB, err := cfg.dbQueries.GetParkingLotFromID(req.Context(), lotID)
+
+	if err == sql.ErrNoRows {
+		respondWithError(res, http.StatusBadRequest, "No lot for this uuid")
+	}
+	if err != nil {
+
+		respondWithError(res, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := struct {
+		ID            uuid.UUID `json:"id"`
+		Name          string    `json:"name"`
+		Slots         int32     `json:"slots"`
+		Occupiedslots int32     `json:"ocupiedSlots"`
+	}{
+		ID:            parkingLotDB.ID,
+		Name:          parkingLotDB.Name,
+		Slots:         parkingLotDB.Slots,
+		Occupiedslots: parkingLotDB.Occupiedslots,
+	}
+
+	respondWithJSON(res, http.StatusOK, response)
 }

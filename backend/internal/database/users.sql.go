@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -57,6 +58,50 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :execresult
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteUser, id)
+}
+
+const getAllUsers = `-- name: GetAllUsers :many
+SELECT id, name, email, hashed_password, role, parking_lot_id, created_at, updated_at FROM users
+`
+
+func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.HashedPassword,
+			&i.Role,
+			&i.ParkingLotID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserFromEmail = `-- name: GetUserFromEmail :one
 SELECT id, name, email, hashed_password, role, parking_lot_id, created_at, updated_at FROM users
 WHERE email = $1
@@ -76,4 +121,67 @@ func (q *Queries) GetUserFromEmail(ctx context.Context, email string) (User, err
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getUserFromID = `-- name: GetUserFromID :one
+SELECT id, name, email, hashed_password, role, parking_lot_id, created_at, updated_at FROM users
+WHERE id  = $1
+`
+
+func (q *Queries) GetUserFromID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.HashedPassword,
+		&i.Role,
+		&i.ParkingLotID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :exec
+UPDATE users
+SET name = $1,
+email = $2,
+hashed_password = $3,
+updated_at = NOW()
+WHERE id = $4
+`
+
+type UpdateUserParams struct {
+	Name           string
+	Email          string
+	HashedPassword string
+	ID             uuid.UUID
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.ExecContext(ctx, updateUser,
+		arg.Name,
+		arg.Email,
+		arg.HashedPassword,
+		arg.ID,
+	)
+	return err
+}
+
+const updateUserParkingLot = `-- name: UpdateUserParkingLot :exec
+UPDATE users
+SET parking_lot_id = $1
+WHERE id = $2
+`
+
+type UpdateUserParkingLotParams struct {
+	ParkingLotID uuid.NullUUID
+	ID           uuid.UUID
+}
+
+func (q *Queries) UpdateUserParkingLot(ctx context.Context, arg UpdateUserParkingLotParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserParkingLot, arg.ParkingLotID, arg.ID)
+	return err
 }
