@@ -506,3 +506,15 @@ Response:
 ```
 
 ---
+
+# 28. Delete User
+
+## DELETE /api/user
+
+```
+{
+    "status": "The user has been deleted"
+}
+```
+
+---
