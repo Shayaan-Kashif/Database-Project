@@ -1,5 +1,17 @@
 # Database Final Project
 
+🚗 Parking Availability Web Application
+
+Finding parking at Ontario Tech University is a daily challenge for students and faculty, especially as campus population continues to grow. This project provides a full-stack parking web application designed to make parking easier, faster, and more predictable. Using a crowdsourced data model—similar to Google Maps’ real-time reporting—users can view estimated availability for each parking lot and submit updates based on what they see on campus.
+
+The system is built with Go, Next.js, PostgreSQL, SQLC, and Goose, following a clean architecture that separates API logic, database operations, and client-side interactions. The application supports secure authentication, lot reviews, and real-time occupancy estimation, offering a reliable and scalable solution for improving parking awareness across campus.
+
+To test it locally, lets clone the repo and go to the directory
+```bash
+git clone https://github.com/Shayaan-Kashif/Database-Project.git
+cd Database-Project/
+```
+split the terminal, one for running the backend, and one for running the frontend, read the backend setup first, then read the frontend setup to see the application fully functional locally on your computer
 
 ## Backend Setup
 
@@ -187,6 +199,45 @@ go run .
 ```
 
 The server should be running now. Stop the server by Ctrl + C, and rerun the command to restart the server
+
+## Frontend Setup
+
+
+### Requirements
+Before getting started, make sure you have the following installed:
+
+* **Node.js** 
+  [Download](https://nodejs.org/en/download)
+
+  ```bash
+  # Verify installation
+  node -v
+  ```
+
+
+
+After cloning the repo, go to the frontend
+```bash
+cd frontend
+```
+Run the following command:
+```bash
+npm install
+```
+After everything is finished installing, start the frontend (make sure the backend is running before starting the frontend)
+```bash
+npm run dev
+```
+
+go to [http://localhost:3000](http://localhost:3000) to see the application
+
+Congratulations, you have successfully started up our application. Feel free to create an account, log in, and test all the functionalities, such as parking at a lot, making a review, or using admin privileges. Click on anything you see promising <br><br>
+
+To create an admin account, the admin code is
+```bash
+admin123
+```
+
 
 
 
